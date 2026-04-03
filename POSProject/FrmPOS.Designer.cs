@@ -58,6 +58,7 @@
             btnShift = new Button();
             btnDiscountItem = new Button();
             btnDiscountInvoice = new Button();
+            btnReturn = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
@@ -368,17 +369,17 @@
             // btnShift
             // 
             btnShift.BackColor = Color.Coral;
-            btnShift.Location = new Point(349, 608);
+            btnShift.Location = new Point(245, 608);
             btnShift.Name = "btnShift";
             btnShift.Size = new Size(128, 56);
             btnShift.TabIndex = 31;
-            btnShift.Text = "Ndërrimi";
+            btnShift.Text = "Ndërrimi (F3)";
             btnShift.UseVisualStyleBackColor = false;
             // 
             // btnDiscountItem
             // 
             btnDiscountItem.BackColor = Color.LightPink;
-            btnDiscountItem.Location = new Point(483, 608);
+            btnDiscountItem.Location = new Point(371, 608);
             btnDiscountItem.Name = "btnDiscountItem";
             btnDiscountItem.Size = new Size(129, 56);
             btnDiscountItem.TabIndex = 32;
@@ -388,12 +389,22 @@
             // btnDiscountInvoice
             // 
             btnDiscountInvoice.BackColor = Color.YellowGreen;
-            btnDiscountInvoice.Location = new Point(618, 608);
+            btnDiscountInvoice.Location = new Point(499, 608);
             btnDiscountInvoice.Name = "btnDiscountInvoice";
             btnDiscountInvoice.Size = new Size(128, 56);
             btnDiscountInvoice.TabIndex = 33;
             btnDiscountInvoice.Text = "Zbritje në faturë";
             btnDiscountInvoice.UseVisualStyleBackColor = false;
+            // 
+            // btnReturn
+            // 
+            btnReturn.BackColor = Color.Gold;
+            btnReturn.Location = new Point(626, 608);
+            btnReturn.Name = "btnReturn";
+            btnReturn.Size = new Size(157, 56);
+            btnReturn.TabIndex = 34;
+            btnReturn.Text = "Kthim/Rimbursim";
+            btnReturn.UseVisualStyleBackColor = false;
             // 
             // FrmPOS
             // 
@@ -401,6 +412,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ScrollBar;
             ClientSize = new Size(1308, 669);
+            Controls.Add(btnReturn);
             Controls.Add(btnDiscountInvoice);
             Controls.Add(btnDiscountItem);
             Controls.Add(btnShift);
@@ -470,5 +482,6 @@
         private Button btnShift;
         private Button btnDiscountItem;
         private Button btnDiscountInvoice;
+        private Button btnReturn;
     }
 }

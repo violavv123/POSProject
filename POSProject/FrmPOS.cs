@@ -95,8 +95,14 @@ namespace POSProject
             btnDiscountItem.FlatStyle = FlatStyle.Flat;
             btnDiscountItem.FlatAppearance.BorderSize = 0;
 
+            btnReturn.MouseEnter += btn_MouseEnter;
+            btnReturn.MouseLeave += btn_MouseLeave;
+            btnReturn.FlatStyle = FlatStyle.Flat;
+            btnReturn.FlatAppearance.BorderSize = 0;
+
             btnDiscountInvoice.Click += btnDiscountInvoice_Click;
             btnDiscountItem.Click += btnDiscountItem_Click;
+            btnReturn.Click += btnReturn_Click;
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -124,6 +130,13 @@ namespace POSProject
                 btnNderroCmimin.PerformClick();
                 return true;
             }
+
+            if(keyData == Keys.F3)
+            {
+                btnShift.PerformClick();
+                return true;
+            }
+
             if(keyData == Keys.Tab)
             {
                 txtBoxPaguar.Focus();
@@ -867,5 +880,11 @@ namespace POSProject
                 txtBoxBarkodi.Focus();
             }));
         }
+
+        private void btnReturn_Click(object sender, EventArgs e)
+        {
+
+        }
+
     }
 }

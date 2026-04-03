@@ -147,7 +147,7 @@
             // 
             txtBoxRendorja.Location = new Point(1037, 250);
             txtBoxRendorja.Name = "txtBoxRendorja";
-            txtBoxRendorja.Size = new Size(140, 25);
+            txtBoxRendorja.Size = new Size(198, 25);
             txtBoxRendorja.TabIndex = 4;
             txtBoxRendorja.TextAlign = HorizontalAlignment.Right;
             // 
@@ -164,7 +164,7 @@
             // 
             txtBoxPershkrimi.Location = new Point(1037, 296);
             txtBoxPershkrimi.Name = "txtBoxPershkrimi";
-            txtBoxPershkrimi.Size = new Size(140, 25);
+            txtBoxPershkrimi.Size = new Size(198, 25);
             txtBoxPershkrimi.TabIndex = 6;
             txtBoxPershkrimi.TextAlign = HorizontalAlignment.Right;
             txtBoxPershkrimi.TextChanged += txtBoxPershkrimi_TextChanged;
@@ -183,7 +183,7 @@
             cmbBoxTipi.FormattingEnabled = true;
             cmbBoxTipi.Location = new Point(1037, 446);
             cmbBoxTipi.Name = "cmbBoxTipi";
-            cmbBoxTipi.Size = new Size(169, 27);
+            cmbBoxTipi.Size = new Size(198, 27);
             cmbBoxTipi.TabIndex = 8;
             // 
             // labelTipi
@@ -200,7 +200,7 @@
             cmbBoxValutaDefault.FormattingEnabled = true;
             cmbBoxValutaDefault.Location = new Point(1037, 498);
             cmbBoxValutaDefault.Name = "cmbBoxValutaDefault";
-            cmbBoxValutaDefault.Size = new Size(169, 27);
+            cmbBoxValutaDefault.Size = new Size(198, 27);
             cmbBoxValutaDefault.TabIndex = 10;
             // 
             // labelValutaDefault
@@ -216,7 +216,7 @@
             // 
             txtBoxShkurtesa.Location = new Point(1037, 343);
             txtBoxShkurtesa.Name = "txtBoxShkurtesa";
-            txtBoxShkurtesa.Size = new Size(140, 25);
+            txtBoxShkurtesa.Size = new Size(198, 25);
             txtBoxShkurtesa.TabIndex = 12;
             txtBoxShkurtesa.TextAlign = HorizontalAlignment.Right;
             // 

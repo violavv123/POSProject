@@ -91,7 +91,7 @@
             // 
             txtBoxName.Location = new Point(922, 177);
             txtBoxName.Name = "txtBoxName";
-            txtBoxName.Size = new Size(140, 25);
+            txtBoxName.Size = new Size(195, 25);
             txtBoxName.TabIndex = 4;
             // 
             // labelBarcode
@@ -107,7 +107,7 @@
             // 
             txtBoxBarcode.Location = new Point(922, 245);
             txtBoxBarcode.Name = "txtBoxBarcode";
-            txtBoxBarcode.Size = new Size(140, 25);
+            txtBoxBarcode.Size = new Size(195, 25);
             txtBoxBarcode.TabIndex = 6;
             // 
             // labelKategoria
@@ -124,7 +124,7 @@
             comboKategoria.FormattingEnabled = true;
             comboKategoria.Location = new Point(922, 314);
             comboKategoria.Name = "comboKategoria";
-            comboKategoria.Size = new Size(169, 27);
+            comboKategoria.Size = new Size(195, 27);
             comboKategoria.TabIndex = 8;
             // 
             // labelCmimi
@@ -140,7 +140,7 @@
             // 
             txtBoxCmimi.Location = new Point(922, 379);
             txtBoxCmimi.Name = "txtBoxCmimi";
-            txtBoxCmimi.Size = new Size(140, 25);
+            txtBoxCmimi.Size = new Size(159, 25);
             txtBoxCmimi.TabIndex = 10;
             // 
             // labelSasia
@@ -156,7 +156,7 @@
             // 
             txtBoxSasia.Location = new Point(922, 447);
             txtBoxSasia.Name = "txtBoxSasia";
-            txtBoxSasia.Size = new Size(140, 25);
+            txtBoxSasia.Size = new Size(159, 25);
             txtBoxSasia.TabIndex = 12;
             // 
             // labelAktiv
@@ -182,7 +182,7 @@
             // chckBxJoAktiv
             // 
             chckBxJoAktiv.AutoSize = true;
-            chckBxJoAktiv.Location = new Point(1014, 523);
+            chckBxJoAktiv.Location = new Point(1036, 523);
             chckBxJoAktiv.Name = "chckBxJoAktiv";
             chckBxJoAktiv.Size = new Size(48, 23);
             chckBxJoAktiv.TabIndex = 15;
