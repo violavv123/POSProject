@@ -27,7 +27,7 @@ namespace POSProject
         private bool kerkonReference = false;
         private string valutaDefault = "EUR";
         private string tipiPageses = "";
-        private List<InvoiceItem> _items;
+        private List<InvoiceItemModel> _items;
         private int? selectedMenyraPagesesId2 = null;
         private bool kerkonReference2 = false;
         private string valutaDefault2 = "EUR";
@@ -52,7 +52,7 @@ namespace POSProject
         private SplitInputMode splitInputMode = SplitInputMode.None;
         private bool suppressPrimaryFocus = false;
 
-        public FrmPagesa(decimal totaliFinal, decimal paguarFillestar, string komenti = "", List<InvoiceItem> items = null, decimal totaliPaZbritje = 0m, decimal zbritjaTotale = 0m)
+        public FrmPagesa(decimal totaliFinal, decimal paguarFillestar, string komenti = "", List<InvoiceItemModel> items = null, decimal totaliPaZbritje = 0m, decimal zbritjaTotale = 0m)
         {
             InitializeComponent();
             _totaliPaZbritje = totaliPaZbritje;
@@ -60,7 +60,7 @@ namespace POSProject
             _totali = totaliFinal;
             _komenti = komenti;
             _paguarFillestar = paguarFillestar;
-            _items = items ?? new List<InvoiceItem>();
+            _items = items ?? new List<InvoiceItemModel>();
 
             dataGridView1.CellClick += dataGridView1_CellClick;
             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;

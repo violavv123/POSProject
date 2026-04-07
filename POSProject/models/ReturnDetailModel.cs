@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace POSProject
 {
-    public class InvoiceItem
+    public class ReturnDetailModel
     {
+        public int Id { get; set; }
+        public int ReturnId { get; set; }
+        public int ShitjaDetaliId { get; set; }
         public int ArtikulliId { get; set; }
-        public string Barkodi { get; set; } = "";
-        public string Produkti { get; set; } = "";
         public decimal Sasia { get; set; }
         public decimal Cmimi { get; set; }
         public decimal Vlera { get; set; }
-        public decimal Zbritja { get; set; }
-        public decimal CmimiFinal { get; set; }
+
     }
 }

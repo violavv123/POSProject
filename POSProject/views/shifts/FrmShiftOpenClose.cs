@@ -14,7 +14,7 @@ namespace POSProject
     public partial class FrmShiftOpenClose : Form
     {
         private readonly ShiftService _shiftService = new ShiftService();
-        private CashierShift? _activeShift;
+        private CashierShiftModel? _activeShift;
 
         private decimal _cashSales = 0m;
         private decimal _cashIn = 0m;
@@ -43,7 +43,7 @@ namespace POSProject
             _activeShift = _shiftService.GetOpenShift();
 
             if (_activeShift == null)
-            {
+            { 
                 SetOpenMode();
                 this.AcceptButton = btnOpenShift;
 
@@ -213,15 +213,12 @@ namespace POSProject
             if (existingOpenShift != null)
             {
                 MessageBox.Show(
-                    $"Nuk mund të hapet ndërrim i ri.\n\n" +
-                    $"Aktualisht ekziston një ndërrim aktiv.\n" +
-                    $"User ID: {existingOpenShift.PerdoruesiId}\n" +
-                    $"Hapur më: {existingOpenShift.Opened_At:dd/MM/yyyy HH:mm}\n\n" +
-                    $"Së pari duhet të mbyllet ndërrimi ekzistues.",
+                    $"Nuk mund të hapet ndërrim i ri, sepse aktualisht ekziston një ndërrim aktiv.\n\n" +
+                    $"Useri: {existingOpenShift.PerdoruesiId}\n" +
+                    $"Hapur më: {existingOpenShift.Opened_At:dd/MM/yyyy HH:mm}",
                     "Ndërrim aktiv ekziston",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-
                 return;
             }
 
@@ -324,13 +321,13 @@ namespace POSProject
 
         private void btnCashIn_Click(object sender, EventArgs e)
         {
-            if(_activeShift == null)
+            if (_activeShift == null)
             {
                 AutoClosingMessageBox.Show("Nuk ka ndërrim aktiv", "Info", 900);
                 NotificationService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për shtim të cash", "Cash in nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
                 return;
             }
-            using (var frm = new FrmCashMovements(_activeShift.Id,"IN"))
+            using (var frm = new FrmCashMovements(_activeShift.Id, "IN"))
             {
                 if (frm.ShowDialog() == DialogResult.OK)
                     LoadShiftSummary();
@@ -340,7 +337,7 @@ namespace POSProject
 
         private void btnCashOut_Click(object sender, EventArgs e)
         {
-            if(_activeShift == null)
+            if (_activeShift == null)
             {
                 AutoClosingMessageBox.Show("Nuk ka ndërrim aktiv", "Info", 900);
                 NotificationService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për largim të cash", "Cash out nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
@@ -352,5 +349,6 @@ namespace POSProject
                     LoadShiftSummary();
             }
         }
+
     }
 }

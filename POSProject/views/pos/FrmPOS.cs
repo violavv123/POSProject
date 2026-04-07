@@ -4,6 +4,8 @@ using System.Windows.Forms;
 using Npgsql;
 using System.Globalization;
 using System.Diagnostics;
+using POSProject.repositories.returns;
+using POSProject.services;
 
 namespace POSProject
 {
@@ -107,44 +109,44 @@ namespace POSProject
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if(keyData == Keys.F12)
+            if (keyData == Keys.F12)
             {
                 btnFinish.PerformClick();
                 return true;
             }
 
-            if(keyData == Keys.F6)
+            if (keyData == Keys.F6)
             {
                 btnRemove.PerformClick();
                 return true;
             }
 
-            if(keyData == Keys.F2)
+            if (keyData == Keys.F2)
             {
                 btnSasia.PerformClick();
                 return true;
             }
 
-            if(keyData == Keys.F4)
+            if (keyData == Keys.F4)
             {
                 btnNderroCmimin.PerformClick();
                 return true;
             }
 
-            if(keyData == Keys.F3)
+            if (keyData == Keys.F3)
             {
                 btnShift.PerformClick();
                 return true;
             }
 
-            if(keyData == Keys.Tab)
+            if (keyData == Keys.Tab)
             {
                 txtBoxPaguar.Focus();
                 return true;
             }
             return base.ProcessCmdKey(ref msg, keyData);
         }
-        
+
         private void FrmPOS_Load(object sender, EventArgs e)
         {
             SetupCartGrid();
@@ -172,7 +174,7 @@ namespace POSProject
 
         private void btnAddProducts_Click(object sender, EventArgs e)
         {
-            if(Session.Role != "admin")
+            if (Session.Role != "admin")
             {
                 MessageBox.Show("Nuk keni qasje në menaxhimin e produkteve.");
                 return;
@@ -183,7 +185,7 @@ namespace POSProject
 
         private void btnMethodPayment_Click(object sender, EventArgs e)
         {
-            if(Session.Role != "admin")
+            if (Session.Role != "admin")
             {
                 MessageBox.Show("Nuk keni qasje në menaxhimin e mënyrave të pagesës.");
                 return;
@@ -193,7 +195,7 @@ namespace POSProject
         }
         private void btnSalesList_Click(object sender, EventArgs e)
         {
-            if(Session.Role != "admin")
+            if (Session.Role != "admin")
             {
                 MessageBox.Show("Nuk keni qasje në listën e shitjeve.");
                 return;
@@ -274,8 +276,8 @@ namespace POSProject
 
                 if (dbProductRow == null)
                 {
-                    AutoClosingMessageBox.Show("Produkti nuk u gjet.","Informacion", 900);
-                    NotificationService.Create("PRODUCT_NOT_FOUND", "Warning", "Produkti nuk u gjet.", $"Barcode:{txtBoxBarkodi.Text}","Artikujt", null, Session.UserId);
+                    AutoClosingMessageBox.Show("Produkti nuk u gjet.", "Informacion", 900);
+                    NotificationService.Create("PRODUCT_NOT_FOUND", "Warning", "Produkti nuk u gjet.", $"Barcode:{txtBoxBarkodi.Text}", "Artikujt", null, Session.UserId);
                     txtBoxBarkodi.Focus();
                     return;
                 }
@@ -331,10 +333,11 @@ namespace POSProject
 
                 CalculateTotal();
                 txtBoxBarkodi.Clear();
-                BeginInvoke(new Action(() => {
+                BeginInvoke(new Action(() =>
+                {
                     txtBoxBarkodi.Focus();
                     txtBoxBarkodi.SelectAll();
-                    }));
+                }));
             }
             catch (Exception ex)
             {
@@ -403,7 +406,7 @@ namespace POSProject
 
             decimal kusuri = paguar - total;
 
-            if(kusuri < 0)
+            if (kusuri < 0)
             {
                 kusuri = 0;
             }
@@ -472,7 +475,7 @@ namespace POSProject
 
                 decimal total = totaliFinal;
                 decimal paguarPOS = ParseDecimal(txtBoxPaguar.Text);
-                List<InvoiceItem> items = GetInvoiceItemsFromCart();
+                List<InvoiceItemModel> items = GetInvoiceItemsFromCart();
 
                 using (FrmPagesa pagesa = new FrmPagesa(
                     totaliFinal,
@@ -512,7 +515,7 @@ namespace POSProject
         }
         private void txtBoxBarkodi_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Enter)
+            if (e.KeyCode == Keys.Enter)
             {
                 btnAdd.PerformClick();
                 e.Handled = true;
@@ -522,7 +525,7 @@ namespace POSProject
 
         private void btnNderroCmimin_Click(object sender, EventArgs e)
         {
-            if(dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
+            if (dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
             {
                 MessageBox.Show("Zgjedh nje rresht.");
                 return;
@@ -538,7 +541,7 @@ namespace POSProject
             if (input == null)
                 return;
 
-            if(!decimal.TryParse(input, out decimal cmimiRi) || cmimiRi <= 0)
+            if (!decimal.TryParse(input, out decimal cmimiRi) || cmimiRi <= 0)
             {
                 MessageBox.Show("Cmimi i ri duhet te jete me i madh se zero.");
                 return;
@@ -565,7 +568,7 @@ namespace POSProject
 
         private void txtBoxPaguar_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Enter)
+            if (e.KeyCode == Keys.Enter)
             {
                 CalculateChange();
                 e.Handled = true;
@@ -580,7 +583,7 @@ namespace POSProject
 
         private void btnSasia_Click(object sender, EventArgs e)
         {
-            if(dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
+            if (dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
             {
                 MessageBox.Show("Zgjedh nje rresht!");
                 return;
@@ -594,19 +597,19 @@ namespace POSProject
 
             string input = ShowInputDialog("Ndrysho sasinë", $"Jep sasinë e re për '{emri}':", sasiaAktuale.ToString("0.##"));
 
-            if(input == null)
+            if (input == null)
             {
                 return;
             }
 
-            if(!decimal.TryParse(input, out decimal sasiaRe) || sasiaRe <= 0)
+            if (!decimal.TryParse(input, out decimal sasiaRe) || sasiaRe <= 0)
             {
                 MessageBox.Show("Sasia e re duhet te jete me e madhe se zero.");
                 return;
             }
 
             DataRow productRow = GetProductById(artikulliId);
-            if(productRow == null)
+            if (productRow == null)
             {
                 MessageBox.Show("Produkti nuk u gjet.");
                 return;
@@ -614,8 +617,8 @@ namespace POSProject
 
             decimal sasiaNeStok = Convert.ToDecimal(productRow["SasiaNeStok"]);
             decimal sasiaTjeterNeFature = GetQuantityInCart(artikulliId) - sasiaAktuale;
-            
-            if(sasiaRe + sasiaTjeterNeFature > sasiaNeStok)
+
+            if (sasiaRe + sasiaTjeterNeFature > sasiaNeStok)
             {
                 MessageBox.Show($"Nuk ka stok te mjaftueshem per '{emri}'. Ne stok: {sasiaNeStok}");
                 return;
@@ -675,7 +678,7 @@ namespace POSProject
             textBox.Text = defaultValue;
             buttonOk.Text = "OK";
             buttonCancel.Text = "Cancel";
-            
+
             label.SetBounds(10, 10, 260, 20);
             textBox.SetBounds(10, 35, 260, 25);
             buttonOk.SetBounds(70, 70, 75, 30);
@@ -698,12 +701,12 @@ namespace POSProject
 
         }
 
-        private List<InvoiceItem> GetInvoiceItemsFromCart()
+        private List<InvoiceItemModel> GetInvoiceItemsFromCart()
         {
-            List<InvoiceItem> items = new List<InvoiceItem>();
+            List<InvoiceItemModel> items = new List<InvoiceItemModel>();
             foreach (DataRow row in cartTable.Rows)
             {
-                items.Add(new InvoiceItem
+                items.Add(new InvoiceItemModel
                 {
                     ArtikulliId = Convert.ToInt32(row["ArtikulliId"]),
                     Produkti = row["Produkti"].ToString(),
@@ -783,7 +786,7 @@ namespace POSProject
 
         private void btnDiscountItem_Click(object sender, EventArgs e)
         {
-            if(dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
+            if (dataGridView1.CurrentRow == null || dataGridView1.CurrentRow.Index < 0)
             {
                 AutoClosingMessageBox.Show("Zgjedh një rresht.", "Info", 900);
                 return;
@@ -805,13 +808,13 @@ namespace POSProject
                 return;
 
             decimal zbritjaRe = ParseDecimal(input);
-            if(zbritjaRe < 0)
+            if (zbritjaRe < 0)
             {
                 AutoClosingMessageBox.Show("Zbritja nuk mund të jetë më e vogël se zero", "Info", 900);
                 return;
             }
 
-            if(zbritjaRe > cmimi)
+            if (zbritjaRe > cmimi)
             {
                 AutoClosingMessageBox.Show("Zbritja nuk mund të jetë më e madhe se çmimi.", "Info", 900);
                 return;
@@ -837,7 +840,7 @@ namespace POSProject
 
         private void btnDiscountInvoice_Click(object sender, EventArgs e)
         {
-            if(cartTable == null || cartTable.Rows.Count == 0)
+            if (cartTable == null || cartTable.Rows.Count == 0)
             {
                 AutoClosingMessageBox.Show("Nuk ka artikuj në faturë.", "Info", 900);
                 return;
@@ -851,19 +854,19 @@ namespace POSProject
             if (input == null)
                 return;
             decimal discount = ParseDecimal(input);
-            if(discount < 0)
+            if (discount < 0)
             {
                 MessageBox.Show("Zbritja nuk mund të jetë negative.");
                 return;
             }
 
             decimal totalAfterItemDiscounts = 0m;
-            foreach(DataRow row in cartTable.Rows)
+            foreach (DataRow row in cartTable.Rows)
             {
                 totalAfterItemDiscounts += Convert.ToDecimal(row["Vlera"]);
             }
 
-            if(discount > totalAfterItemDiscounts)
+            if (discount > totalAfterItemDiscounts)
             {
                 MessageBox.Show("Zbritja e faturës nuk mund të jetë më e madhe se totali aktual.");
                 return;
@@ -883,8 +886,10 @@ namespace POSProject
 
         private void btnReturn_Click(object sender, EventArgs e)
         {
-
+            var returnRepo = new ReturnRepository();
+            var returnService = new ReturnService(returnRepo);
+            FrmReturns frm = new FrmReturns(returnService);
+            frm.ShowDialog();
         }
-
     }
 }

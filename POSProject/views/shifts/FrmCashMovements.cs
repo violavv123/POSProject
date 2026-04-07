@@ -39,12 +39,12 @@ namespace POSProject
 
         private void FrmCashMovements_Load(object sender, EventArgs e)
         {
-            if(_tipi == "IN")
+            if (_tipi == "IN")
             {
                 this.Text = "Cash In";
                 labelTitle.Text = "Shto Cash";
             }
-            else if(_tipi == "OUT")
+            else if (_tipi == "OUT")
             {
                 this.Text = "Cash Out";
                 labelTitle.Text = "Largo Cash";
@@ -127,5 +127,7 @@ namespace POSProject
                 MessageBox.Show("Gabim gjatë ruajtjes: " + ex.Message);
             }
         }
+
+       
     }
 }

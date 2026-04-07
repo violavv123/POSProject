@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace POSProject
 {
-    public class CashierShift
+    public class CashierShiftModel
     {
         public int Id { get; set; }
         public int PerdoruesiId { get; set; }

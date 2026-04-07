@@ -10,7 +10,7 @@ namespace POSProject
 {
     public class ShiftService
     {
-        public CashierShift? GetOpenShiftByUser(int userId)
+        public CashierShiftModel? GetOpenShiftByUser(int userId)
         {
             using (var conn = Db.GetConnection())
             {
@@ -28,7 +28,7 @@ namespace POSProject
                     {
                         if (!reader.Read())
                             return null;
-                        return new CashierShift
+                        return new CashierShiftModel
                         {
                             Id = reader.GetInt32(reader.GetOrdinal("Id")),
                             PerdoruesiId = reader.GetInt32(reader.GetOrdinal("PerdoruesiId")),
@@ -47,7 +47,7 @@ namespace POSProject
             }
         }
 
-        public CashierShift? GetOpenShift()
+        public CashierShiftModel? GetOpenShift()
         {
             using (var conn = Db.GetConnection())
             {
@@ -66,7 +66,7 @@ namespace POSProject
                     if (!reader.Read())
                         return null;
 
-                    return new CashierShift
+                    return new CashierShiftModel
                     {
                         Id = reader.GetInt32(reader.GetOrdinal("Id")),
                         PerdoruesiId = reader.GetInt32(reader.GetOrdinal("PerdoruesiId")),
@@ -83,7 +83,7 @@ namespace POSProject
             }
         }
 
-        public CashierShift? GetLastClosedShift()
+        public CashierShiftModel? GetLastClosedShift()
         {
             using (var conn = Db.GetConnection())
             {
@@ -103,7 +103,7 @@ namespace POSProject
                     if (!reader.Read())
                         return null;
 
-                    return new CashierShift
+                    return new CashierShiftModel
                     {
                         Id = reader.GetInt32(reader.GetOrdinal("Id")),
                         PerdoruesiId = reader.GetInt32(reader.GetOrdinal("PerdoruesiId")),

@@ -16,7 +16,7 @@ namespace POSProject
     {
 
         private AutoCompleteStringCollection subjectList = new AutoCompleteStringCollection();
-        private List<InvoiceItem> invoiceitems = new List<InvoiceItem>();
+        private List<InvoiceItemModel> invoiceitems = new List<InvoiceItemModel>();
         private int? selectedSubjektiId = null;
         private int savedShitjaId = 0;
         private PrintDocument printDocument = new PrintDocument();
@@ -28,11 +28,11 @@ namespace POSProject
         private decimal _totaliPaZbritje;
         private decimal _zbritjaTotale;
 
-        public FrmFaturimi(List<InvoiceItem> items, string komenti, decimal totaliFinal, decimal totaliPaZbritje, decimal zbritjaTotale, List<PaymentExecutionModel> payments)
+        public FrmFaturimi(List<InvoiceItemModel> items, string komenti, decimal totaliFinal, decimal totaliPaZbritje, decimal zbritjaTotale, List<PaymentExecutionModel> payments)
         {
             InitializeComponent();
             printDocument.PrintPage += PrintDocument_PrintPage;
-            invoiceitems = items ?? new List<InvoiceItem>();
+            invoiceitems = items ?? new List<InvoiceItemModel>();
             txtBoxSubjekti.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             txtBoxSubjekti.AutoCompleteSource = AutoCompleteSource.CustomSource;
             LoadSubjectAutoComplete();
