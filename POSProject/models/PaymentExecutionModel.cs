@@ -8,6 +8,8 @@ namespace POSProject
 {
     public class PaymentExecutionModel
     {
+        public int Id { get; set; }
+        public int ShitjaId { get; set; }
         public int MenyraPagesesId { get; set; }
         public string Pershkrimi { get; set; }
         public string Shkurtesa { get; set; }
@@ -22,6 +24,7 @@ namespace POSProject
         public string Statusi { get; set; }
         public string Koment { get; set; }
         public int PerdoruesiId { get; set; }
-
+        public DateTime CreatedAt { get; set; }
+        public int ShiftId { get; set; }
     }
 }

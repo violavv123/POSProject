@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace POSProject.repositories.notifications
+namespace POSProject.repositories.payments
 {
-    internal class INotificationRepository
+    public interface IExchangeRateRepository
     {
+        decimal GetLatestRate(string valuta);
     }
 }

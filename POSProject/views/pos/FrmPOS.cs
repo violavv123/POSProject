@@ -5,7 +5,10 @@ using Npgsql;
 using System.Globalization;
 using System.Diagnostics;
 using POSProject.repositories.returns;
-using POSProject.services;
+using POSProject.services.returns;
+using POSProject.services.products;
+using POSProject.repositories.products;
+using POSProject.models;
 
 namespace POSProject
 {
@@ -18,9 +21,15 @@ namespace POSProject
         private decimal totaliPaZbritje = 0m;
         private decimal zbritjaTotale = 0m;
         private decimal totaliFinal = 0m;
+
+        private readonly ProductService _productService;
         public FrmPOS()
         {
             InitializeComponent();
+
+            IProductRepository productRepo = new ProductRepository();
+            _productService = new ProductService(productRepo);
+
             this.KeyPreview = true;
             txtBoxBarkodi.KeyDown += txtBoxBarkodi_KeyDown;
             btnSasia.Click += btnSasia_Click;
@@ -105,6 +114,7 @@ namespace POSProject
             btnDiscountInvoice.Click += btnDiscountInvoice_Click;
             btnDiscountItem.Click += btnDiscountItem_Click;
             btnReturn.Click += btnReturn_Click;
+
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -234,47 +244,21 @@ namespace POSProject
             dataGridView1.Columns["Vlera"].DefaultCellStyle.Format = "0.00";
         }
 
-        private DataRow GetProductByBarcode(string barkodi)
-        {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-
-                string query = @"SELECT ""Id"", ""Emri"", ""CmimiShitjes"", ""Barkodi"",""SasiaNeStok""
-                                 FROM ""Artikujt""
-                                 WHERE ""Barkodi"" = @barkodi AND ""Aktiv"" = TRUE";
-
-                using (var cmd = new NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@barkodi", barkodi);
-
-                    using (var da = new NpgsqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        if (dt.Rows.Count > 0)
-                            return dt.Rows[0];
-                    }
-                }
-            }
-
-            return null;
-        }
-
         private void btnAdd_Click(object sender, EventArgs e)
         {
             try
-            {
-                DataRow dbProductRow = null;
+            { 
 
-                if (!string.IsNullOrWhiteSpace(txtBoxBarkodi.Text))
+                if (string.IsNullOrWhiteSpace(txtBoxBarkodi.Text))
                 {
-                    string barkodi = txtBoxBarkodi.Text.Trim();
-                    dbProductRow = GetProductByBarcode(barkodi);
+                    txtBoxBarkodi.Focus();
+                    return;
                 }
 
-                if (dbProductRow == null)
+                string barkodi = txtBoxBarkodi.Text.Trim();
+                ProductModel product = _productService.GetByBarcode(barkodi);
+
+                if (product == null)
                 {
                     AutoClosingMessageBox.Show("Produkti nuk u gjet.", "Informacion", 900);
                     NotificationService.Create("PRODUCT_NOT_FOUND", "Warning", "Produkti nuk u gjet.", $"Barcode:{txtBoxBarkodi.Text}", "Artikujt", null, Session.UserId);
@@ -282,14 +266,14 @@ namespace POSProject
                     return;
                 }
 
-                int artikulliId = Convert.ToInt32(dbProductRow["Id"]);
-                string emri = dbProductRow["Emri"].ToString();
-                decimal cmimi = Convert.ToDecimal(dbProductRow["CmimiShitjes"]);
-                decimal sasiaKerkuar = 1;
-                decimal sasiaNeStok = Convert.ToDecimal(dbProductRow["SasiaNeStok"]);
+                int artikulliId = product.Id;
+                string emri = product.Emri;
+                decimal cmimi = product.CmimiShitjes;
+                decimal sasiaKerkuar = 1m;
+                decimal sasiaNeStok = product.SasiaNeStok;
                 decimal sasiaNeFature = GetQuantityInCart(artikulliId);
 
-                if (sasiaKerkuar + sasiaNeFature > sasiaNeStok)
+                if (!_productService.HasEnoughStock(artikulliId, sasiaKerkuar, sasiaNeFature))
                 {
                     AutoClosingMessageBox.Show($"Nuk ka stok te mjaftueshem per produktin '{emri}'. Ne stok: {sasiaNeStok}, ne fature: {sasiaNeFature}, u kerkuar edhe: {sasiaKerkuar}.", "Informacion", 900);
                     NotificationService.Create("LOW_STOCK", "Warning", "Stok i pamjaftueshëm.", $"Produkti{emri} - stok:{sasiaNeStok}", "Artikujt", artikulliId, Session.UserId);
@@ -345,33 +329,6 @@ namespace POSProject
             }
         }
 
-        private DataRow GetProductById(int id)
-        {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-
-                string query = @"SELECT ""Id"", ""Emri"", ""CmimiShitjes"", ""Barkodi"", ""SasiaNeStok""
-                         FROM ""Artikujt""
-                         WHERE ""Id"" = @id AND ""Aktiv"" = TRUE";
-
-                using (var cmd = new NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-
-                    using (var da = new NpgsqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        if (dt.Rows.Count > 0)
-                            return dt.Rows[0];
-                    }
-                }
-            }
-
-            return null;
-        }
         private void CalculateTotal()
         {
             totaliPaZbritje = 0m;
@@ -531,7 +488,7 @@ namespace POSProject
                 return;
             }
 
-            int artikulliId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["Id"]);
+            int artikulliId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["ArtikulliId"]);
             DataGridViewRow row = dataGridView1.CurrentRow;
             string emri = row.Cells["Produkti"].Value.ToString();
             decimal sasia = Convert.ToDecimal(row.Cells["Sasia"].Value);
@@ -608,17 +565,17 @@ namespace POSProject
                 return;
             }
 
-            DataRow productRow = GetProductById(artikulliId);
-            if (productRow == null)
+            ProductModel product = _productService.GetById(artikulliId);
+            if(product == null)
             {
                 MessageBox.Show("Produkti nuk u gjet.");
                 return;
             }
 
-            decimal sasiaNeStok = Convert.ToDecimal(productRow["SasiaNeStok"]);
+            decimal sasiaNeStok = product.SasiaNeStok;
             decimal sasiaTjeterNeFature = GetQuantityInCart(artikulliId) - sasiaAktuale;
 
-            if (sasiaRe + sasiaTjeterNeFature > sasiaNeStok)
+            if (!_productService.HasEnoughStock(artikulliId, sasiaRe, sasiaTjeterNeFature))
             {
                 MessageBox.Show($"Nuk ka stok te mjaftueshem per '{emri}'. Ne stok: {sasiaNeStok}");
                 return;

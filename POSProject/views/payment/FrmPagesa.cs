@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Serialization;
+using POSProject.repositories.payments;
+using POSProject.services;
 
 namespace POSProject
 {
@@ -51,10 +53,16 @@ namespace POSProject
         }
         private SplitInputMode splitInputMode = SplitInputMode.None;
         private bool suppressPrimaryFocus = false;
+        private readonly PaymentService _paymentService;
 
         public FrmPagesa(decimal totaliFinal, decimal paguarFillestar, string komenti = "", List<InvoiceItemModel> items = null, decimal totaliPaZbritje = 0m, decimal zbritjaTotale = 0m)
         {
             InitializeComponent();
+
+            IPaymentMethodRepository methodRepo = new PaymentMethodRepository();
+            IExchangeRateRepository exchangeRateRepo = new ExchangeRateRepository();
+            _paymentService = new PaymentService(methodRepo, exchangeRateRepo);
+
             _totaliPaZbritje = totaliPaZbritje;
             _zbritjaTotale = zbritjaTotale;
             _totali = totaliFinal;
@@ -99,6 +107,7 @@ namespace POSProject
             labelNrReference2.Visible = false;
             txtBoxNrReference2.Visible = false;
             btnSplitPayment.Visible = true;
+
         }
 
         private void FrmPagesa_Load(object sender, EventArgs e)
@@ -175,19 +184,27 @@ namespace POSProject
 
         private void LoadMenyraPageses()
         {
-            using (var conn = Db.GetConnection())
+            var methods = _paymentService.GetActiveMethods();
+            menyraTable = new DataTable();
+            menyraTable.Columns.Add("Id", typeof(int));
+            menyraTable.Columns.Add("Pershkrimi", typeof(string));
+            menyraTable.Columns.Add("Shkurtesa", typeof(string));
+            menyraTable.Columns.Add("Tipi", typeof(string));
+            menyraTable.Columns.Add("ValutaDefault", typeof(string));
+            menyraTable.Columns.Add("KerkonReference", typeof(bool));
+            menyraTable.Columns.Add("Rendorja", typeof(int));
+
+            foreach(var method in methods)
             {
-                conn.Open();
-                string query = @"SELECT ""Id"",""Pershkrimi"",""Shkurtesa"",""Tipi"",""ValutaDefault"",""KerkonReference"",""Rendorja""
-                                FROM ""MenyratPageses""
-                                WHERE ""Aktiv"" = TRUE
-                                ORDER BY COALESCE (""Rendorja"", 999),""Pershkrimi"";";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                using (var da = new Npgsql.NpgsqlDataAdapter(cmd))
-                {
-                    menyraTable = new DataTable();
-                    da.Fill(menyraTable);
-                }
+                menyraTable.Rows.Add(
+                    method.Id,
+                    method.Pershkrimi,
+                    method.Shkurtesa,
+                    method.Tipi,
+                    method.ValutaDefault,
+                    method.KerkonReference,
+                    method.Rendorja
+                    );
             }
             ApplyPaymentSources();
         }
@@ -852,29 +869,7 @@ namespace POSProject
         }
         private decimal MerrKursinPerValuten(string valuta)
         {
-            if (string.IsNullOrWhiteSpace(valuta))
-                return 1m;
-            string val = valuta.Trim().ToUpper();
-            if (val == "EUR")
-                return 1m;
-            using(var conn = Db.GetConnection())
-            {
-                conn.Open();
-                string query = @"SELECT ""KursiNeEuro""
-                                 FROM ""KursetKembimit""
-                                 WHERE UPPER(""Valuta"") = @valuta
-                                    AND ""Aktiv"" = TRUE
-                                 ORDER BY ""CreatedAt"" DESC
-                                 LIMIT 1;";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@valuta", val);
-                    object result = cmd.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                        return Convert.ToDecimal(result);
-                }
-            }
-            return 1m;
+           return _paymentService.GetExchangeRate(valuta);
         }
 
         private void RecalculateSplitAmounts()

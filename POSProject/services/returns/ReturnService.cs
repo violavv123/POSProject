@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using POSProject.repositories.returns;
 
-namespace POSProject.services
+namespace POSProject.services.returns
 {
     public class ReturnService : IReturnService
     {

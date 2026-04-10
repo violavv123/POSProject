@@ -9,6 +9,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing.Printing;
 using System.Linq.Expressions;
+using POSProject.services;
+using POSProject.services.sales;
+using POSProject.repositories.subjects;
+using POSProject.repositories.sales;
+using POSProject.repositories.products;
+using POSProject.repositories.payments;
+using POSProject.models;
 
 namespace POSProject
 {
@@ -28,9 +35,17 @@ namespace POSProject
         private decimal _totaliPaZbritje;
         private decimal _zbritjaTotale;
 
+        private readonly SubjectService _subjectService;
+        private readonly SaleService _saleService;
         public FrmFaturimi(List<InvoiceItemModel> items, string komenti, decimal totaliFinal, decimal totaliPaZbritje, decimal zbritjaTotale, List<PaymentExecutionModel> payments)
         {
             InitializeComponent();
+            ISubjectRepository subjectRepo = new SubjectRepository();
+            ISaleRepository saleRepo = new SaleRepository();
+            IProductRepository productRepo = new ProductRepository();
+            IPaymentExecutionRepository paymentRepo = new PaymentExecutionRepository();
+            _subjectService = new SubjectService(subjectRepo);
+            _saleService = new SaleService(saleRepo, productRepo, paymentRepo);
             printDocument.PrintPage += PrintDocument_PrintPage;
             invoiceitems = items ?? new List<InvoiceItemModel>();
             txtBoxSubjekti.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
@@ -74,6 +89,7 @@ namespace POSProject
             btnClear.Click += btnClear_Click;
 
             CalculateTVSH();
+
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -232,23 +248,12 @@ namespace POSProject
         {
 
             subjectList.Clear();
-            using (var connection = Db.GetConnection())
+            List<string> names = _subjectService.GetSubjectNames();
+            foreach(var name in names)
             {
-                connection.Open();
-                string query = @"SELECT ""Pershkrimi"" 
-                                FROM ""Subjektet""
-                                ORDER BY ""Pershkrimi""";
-
-                using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        subjectList.Add(reader["Pershkrimi"].ToString());
-                    }
-                }
-                txtBoxSubjekti.AutoCompleteCustomSource = subjectList;
+                subjectList.Add(name);
             }
+            txtBoxSubjekti.AutoCompleteCustomSource = subjectList;
         }
 
         private void FrmFaturimi_Load(object sender, EventArgs e)
@@ -302,39 +307,24 @@ namespace POSProject
                 return;
             }
 
-            using (var connection = Db.GetConnection())
+            var subjekti = _subjectService.GetByName(pershkrimi);
+            if(subjekti != null)
             {
-                connection.Open();
-                string query = @"SELECT ""Id"",""Pershkrimi"",""NumriFiskal"",""Adresa"",""LlojiSubjektit""
-                               FROM ""Subjektet""
-                               WHERE LOWER(TRIM(""Pershkrimi""))=LOWER(TRIM(@pershkrimi))
-                               LIMIT 1;";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                {
-                    cmd.Parameters.AddWithValue("@pershkrimi", pershkrimi);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            selectedSubjektiId = Convert.ToInt32(reader["Id"]);
-                            txtBoxSubjekti.Text = reader["Pershkrimi"].ToString();
-                            txtBoxNrFiskal.Text = reader["NumriFiskal"]?.ToString() ?? "";
-                            txtBoxAdresa.Text = reader["Adresa"]?.ToString() ?? "";
-                            string lloji = reader["LlojiSubjektit"]?.ToString() ?? "";
-                            if (comboLloji.Items.Contains(lloji))
-                                comboLloji.SelectedItem = lloji;
-                            else
-                                comboLloji.SelectedIndex = -1;
-                        }
-                        else
-                        {
-                            selectedSubjektiId = null;
-                            txtBoxNrFiskal.Clear();
-                            txtBoxAdresa.Clear();
-                            comboLloji.SelectedIndex = -1;
-                        }
-                    }
-                }
+                selectedSubjektiId = subjekti.Id;
+                txtBoxSubjekti.Text = subjekti.Pershkrimi;
+                txtBoxNrFiskal.Text = subjekti.NumriFiskal ?? "";
+                txtBoxAdresa.Text = subjekti.Adresa ?? "";
+                if (comboLloji.Items.Contains(subjekti.LlojiSubjektit))
+                    comboLloji.SelectedItem = subjekti.LlojiSubjektit;
+                else
+                    comboLloji.SelectedIndex = -1;
+            }
+            else
+            {
+                selectedSubjektiId = null;
+                txtBoxNrFiskal.Clear();
+                txtBoxAdresa.Clear();
+                comboLloji.SelectedIndex = -1;
             }
         }
 
@@ -383,152 +373,71 @@ namespace POSProject
         {
             if (!ValidateInvoice())
                 return;
+
             try
             {
-                using (var connection = Db.GetConnection())
+                var shiftService = new ShiftService();
+                var activeShift = shiftService.GetOpenShift();
+
+                if (activeShift == null)
                 {
-                    connection.Open();
-                    using (var transaction = connection.BeginTransaction())
-                    {
-                        try
-                        {
-                            int newShitjaId;
-                            var shiftService = new ShiftService();
-                            var activeShift = shiftService.GetOpenShift();
-
-                            if (activeShift == null)
-                            {
-                                MessageBox.Show("Duhet të hapni një ndërrim para se të kryeni shitje.");
-                                return;
-                            }
-                            int currentShiftId = activeShift.Id;
-                            string insertShitjaQuery = @"INSERT INTO ""Shitjet"" (""NrFatures"",""DataShitjes"",""Totali"",""Koment"",""perdoruesi_id"",""SubjektiId"", ""ShiftId"") VALUES
-                                                       (@NrFatures, @DataShitjes, @Totali, @Koment, @PerdoruesiId, @SubjektiId, @ShiftId)
-                                                       RETURNING ""Id"";";
-                            using (var cmd = new Npgsql.NpgsqlCommand(insertShitjaQuery, connection, transaction))
-                            {
-                                cmd.Parameters.AddWithValue("@NrFatures", txtBoxNrFatures.Text.Trim());
-                                cmd.Parameters.AddWithValue("@DataShitjes", DateTime.Now);
-                                cmd.Parameters.AddWithValue("@Totali", decimal.Parse(txtBoxTotali.Text));
-
-                                if (string.IsNullOrWhiteSpace(txtBoxKoment.Text))
-                                {
-                                    cmd.Parameters.AddWithValue("@Koment", DBNull.Value);
-                                }
-                                else
-                                {
-                                    cmd.Parameters.AddWithValue("@Koment", txtBoxKoment.Text.Trim());
-                                }
-
-                                cmd.Parameters.AddWithValue("@PerdoruesiId", Session.UserId);
-                                if (selectedSubjektiId.HasValue)
-                                {
-                                    cmd.Parameters.AddWithValue("@SubjektiId", selectedSubjektiId.Value);
-                                }
-                                else
-                                {
-                                    cmd.Parameters.AddWithValue("@SubjektiId", DBNull.Value);
-                                }
-                                cmd.Parameters.AddWithValue("@ShiftId", currentShiftId);
-                                newShitjaId = Convert.ToInt32(cmd.ExecuteScalar());
-                            }
-
-                            foreach (var item in invoiceitems)
-                            {
-                                string stockCheckQuery = @"SELECT ""SasiaNeStok""
-                                                         FROM ""Artikujt""
-                                                         WHERE ""Id"" = @artikulliId;";
-                                decimal sasiaNeStokAktuale;
-                                using (var cmdStock = new Npgsql.NpgsqlCommand(stockCheckQuery, connection, transaction))
-                                {
-                                    cmdStock.Parameters.AddWithValue("@artikulliId", item.ArtikulliId);
-                                    object stockResult = cmdStock.ExecuteScalar();
-                                    if (stockResult == null)
-                                        throw new Exception("Produkti me Id: " + item.ArtikulliId + "nuk u gjet në databazë.");
-
-                                    sasiaNeStokAktuale = Convert.ToDecimal(stockResult);
-                                }
-                                if (item.Sasia > sasiaNeStokAktuale)
-                                {
-                                    NotificationService.Create("STOCK_ERROR", "Error", "Stok i pamjaftueshëm gjatë ruajtjes.", $"Produkti {item.Produkti}", "Artikujt", item.ArtikulliId, Session.UserId);
-                                    throw new Exception("Nuk ka stok të mjaftueshëm për produktin: '" + item.Produkti + "'. Në stok: " + sasiaNeStokAktuale + ",kërkohet: " + item.Sasia);
-                                }
-
-                                string insertDetaleQuery = @"INSERT INTO ""ShitjetDetale"" (""ShitjaId"", ""ArtikulliId"",""Sasia"",""Cmimi"",""Vlera"") VALUES
-                                                   (@ShitjaId, @ArtikulliId, @Sasia, @Cmimi, @Vlera);";
-                                using (var cmd = new Npgsql.NpgsqlCommand(insertDetaleQuery, connection, transaction))
-                                {
-                                    cmd.Parameters.AddWithValue("@ShitjaId", newShitjaId);
-                                    cmd.Parameters.AddWithValue("@ArtikulliId", item.ArtikulliId);
-                                    cmd.Parameters.AddWithValue("@Sasia", item.Sasia);
-                                    cmd.Parameters.AddWithValue("@Cmimi", item.Cmimi);
-                                    cmd.Parameters.AddWithValue("@Vlera", item.Vlera);
-                                    cmd.ExecuteNonQuery();
-
-                                }
-
-                                string updateStockQuery = @"UPDATE ""Artikujt""
-                                                          SET ""SasiaNeStok"" = ""SasiaNeStok"" - @sasia
-                                                          WHERE ""Id"" = @artikulliId;";
-                                using (var cmdUpdateStock = new Npgsql.NpgsqlCommand(updateStockQuery, connection, transaction))
-                                {
-                                    cmdUpdateStock.Parameters.AddWithValue("@sasia", item.Sasia);
-                                    cmdUpdateStock.Parameters.AddWithValue("@artikulliId", item.ArtikulliId);
-                                    cmdUpdateStock.ExecuteNonQuery();
-                                }
-
-
-                            }
-
-                            string insertPagesaQuery = @"INSERT INTO ""EkzekutimiPageses""(""ShitjaId"",""MenyraPagesesId"",""ShumaPaguar"",""PaguarMe"",
-                                                        ""CashBack"",""Valuta"",""KursiKembimit"",""ShumaNeValuteBaze"",""ReferenceNr"",""Statusi"",""Koment"",""PerdoruesiId"",""Created_At"", ""ShiftId"")
-                                                        VALUES (@ShitjaId, @MenyraPagesesId, @ShumaPaguar, @PaguarMe, @CashBack, @Valuta, @KursiKembimit, @ShumaNeValuteBaze, @ReferenceNr,
-                                                        @Statusi, @Koment, @PerdoruesiId, @Created_At, @ShiftId);";
-                            foreach (var payment in paymentInfoList)
-                            {
-                                using (var cmdPagesa = new Npgsql.NpgsqlCommand(insertPagesaQuery, connection, transaction))
-                                {
-                                    cmdPagesa.Parameters.AddWithValue("@ShitjaId", newShitjaId);
-                                    cmdPagesa.Parameters.AddWithValue("@MenyraPagesesId", payment.MenyraPagesesId);
-                                    cmdPagesa.Parameters.AddWithValue("@ShumaPaguar", payment.ShumaPaguar);
-                                    cmdPagesa.Parameters.AddWithValue("@PaguarMe", payment.PaguarMe);
-                                    cmdPagesa.Parameters.AddWithValue("@CashBack", payment.CashBack);
-                                    cmdPagesa.Parameters.AddWithValue("@Valuta", payment.Valuta ?? "EUR");
-                                    cmdPagesa.Parameters.AddWithValue("@KursiKembimit", payment.KursiKembimit);
-                                    cmdPagesa.Parameters.AddWithValue("@ShumaNeValuteBaze", payment.ShumaNeValuteBaze);
-                                    cmdPagesa.Parameters.AddWithValue("@ReferenceNr",
-                                        string.IsNullOrWhiteSpace(payment.ReferenceNr) ? (object)DBNull.Value : payment.ReferenceNr);
-                                    cmdPagesa.Parameters.AddWithValue("@Statusi", payment.Statusi ?? "Kompletuar");
-                                    cmdPagesa.Parameters.AddWithValue("@Koment",
-                                        string.IsNullOrWhiteSpace(payment.Koment) ? (object)DBNull.Value : payment.Koment);
-                                    cmdPagesa.Parameters.AddWithValue("@PerdoruesiId", Session.UserId);
-                                    cmdPagesa.Parameters.AddWithValue("@Created_At", DateTime.Now);
-                                    cmdPagesa.Parameters.AddWithValue("@ShiftId", activeShift.Id);
-                                    cmdPagesa.ExecuteNonQuery();
-                                }
-                            }
-
-                            transaction.Commit();
-                            savedShitjaId = newShitjaId;
-                            InvoiceSaved = true;
-                            AutoClosingMessageBox.Show("Fatura u ruajt me sukses.", "Informacion", 900);
-                            NotificationService.Create("SALE_COMPLETED", "Info", "Shitje e realizuar", $"Fatura {txtBoxNrFatures.Text} - Totali {txtBoxTotali.Text} EUR", "Shitjet", newShitjaId, Session.UserId);
-                        }
-                        catch (Exception ex)
-                        {
-                            transaction.Rollback();
-                            MessageBox.Show("Gabim gjate ruajtjes: " + ex.Message);
-                            NotificationService.Create("SALE_ERROR", "Error", "Gabim gjatë shitjes", ex.Message, "Shitjet", null, Session.UserId);
-                        }
-                    }
+                    MessageBox.Show("Duhet të hapni një ndërrim para se të kryeni shitje.");
+                    return;
                 }
+
+                var shitja = new SaleModel
+                {
+                    NrFatures = txtBoxNrFatures.Text.Trim(),
+                    DataShitjes = DateTime.Now,
+                    Totali = decimal.Parse(txtBoxTotali.Text),
+                    Koment = string.IsNullOrWhiteSpace(txtBoxKoment.Text) ? null : txtBoxKoment.Text.Trim(),
+                    PerdoruesiId = Session.UserId,
+                    SubjektiId = selectedSubjektiId,
+                    ShiftId = activeShift.Id,
+                    TotaliPaZbritje = _totaliPaZbritje,
+                    ZbritjaTotale = _zbritjaTotale,
+                    TotaliFinal = _totaliFinal
+                };
+
+                var detale = invoiceitems.Select(x => new SaleDetailModel
+                {
+                    ArtikulliId = x.ArtikulliId,
+                    Sasia = x.Sasia,
+                    Cmimi = x.Cmimi,
+                    Vlera = x.Vlera,
+                    Zbritja = x.Zbritja,
+                    CmimiFinal = x.CmimiFinal
+                }).ToList();
+
+                var payments = paymentInfoList.Select(x => new PaymentExecutionModel
+                {
+                    MenyraPagesesId = x.MenyraPagesesId,
+                    ShumaPaguar = x.ShumaPaguar,
+                    PaguarMe = x.PaguarMe,
+                    CashBack = x.CashBack,
+                    Valuta = x.Valuta ?? "EUR",
+                    KursiKembimit = x.KursiKembimit,
+                    ShumaNeValuteBaze = x.ShumaNeValuteBaze,
+                    ReferenceNr = x.ReferenceNr,
+                    Statusi = x.Statusi ?? "Kompletuar",
+                    Koment = x.Koment,
+                    PerdoruesiId = Session.UserId,
+                    CreatedAt = DateTime.Now,
+                    ShiftId = activeShift.Id
+                }).ToList();
+
+                int newShitjaId = _saleService.SaveSale(shitja, detale, payments);
+
+                savedShitjaId = newShitjaId;
+                InvoiceSaved = true;
+
+                AutoClosingMessageBox.Show("Fatura u ruajt me sukses.", "Informacion", 900);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gabim me databazen: " + ex.Message);
+                MessageBox.Show("Gabim gjatë ruajtjes: " + ex.Message);
             }
         }
-
 
         private void btnPrint_Click(object sender, EventArgs e)
         {

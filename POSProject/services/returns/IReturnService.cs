@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace POSProject.services
+namespace POSProject.services.returns
 {
     public interface IReturnService
     {

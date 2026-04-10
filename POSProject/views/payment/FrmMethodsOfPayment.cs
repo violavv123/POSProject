@@ -10,15 +10,20 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using Npgsql;
+using POSProject.repositories.payments;
+using POSProject.services.payments;
+using POSProject.models;
 
 namespace POSProject
 {
     public partial class FrmMethodsOfPayment : Form
     {
         private int? selectedMethodId = null;
+        private readonly IPaymentMethodService _paymentMethodService;
         public FrmMethodsOfPayment()
         {
             InitializeComponent();
+            _paymentMethodService = new PaymentMethodService(new PaymentMethodRepository());
             txtBoxRendorja.KeyDown += txtBoxRendorja_KeyDown;
             txtBoxPershkrimi.KeyDown += txtBoxPershkrimi_KeyDown;
             txtBoxShkurtesa.KeyDown += txtBoxShkurtesa_KeyDown;
@@ -95,28 +100,11 @@ namespace POSProject
         {
             try
             {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-
-                    string query = @"
-                        SELECT ""Valuta""
-                        FROM ""KursetKembimit""
-                        WHERE ""Aktiv"" = TRUE
-                        ORDER BY ""Valuta"";";
-
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    using (var da = new NpgsqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        cmbBoxValutaDefault.DataSource = dt;
-                        cmbBoxValutaDefault.DisplayMember = "Valuta";
-                        cmbBoxValutaDefault.ValueMember = "Valuta";
-                        cmbBoxValutaDefault.SelectedIndex = -1;
-                    }
-                }
+                DataTable dt = _paymentMethodService.GetCurrencies();
+                cmbBoxValutaDefault.DataSource = dt;
+                cmbBoxValutaDefault.DisplayMember = "Valuta";
+                cmbBoxValutaDefault.ValueMember = "Valuta";
+                cmbBoxValutaDefault.SelectedIndex = -1;
             }
             catch (Exception ex)
             {
@@ -128,34 +116,7 @@ namespace POSProject
         {
             try
             {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-
-                    string query = @"
-                        SELECT 
-                            ""Id"",
-                            ""Rendorja"",
-                            ""Pershkrimi"",
-                            ""Shkurtesa"",
-                            ""KerkonReference"",
-                            ""Tipi"",
-                            ""ValutaDefault"",
-                            ""Aktiv"",
-                            ""Created_At"",
-                            ""Updated_At""
-                        FROM ""MenyratPageses""
-                        ORDER BY ""Rendorja"", ""Pershkrimi"";";
-
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    using (var da = new NpgsqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-                        dataGridView1.DataSource = dt;
-                    }
-                }
-
+                dataGridView1.DataSource = _paymentMethodService.GetMethods();
                 FormatGrid();
             }
             catch (Exception ex)
@@ -164,154 +125,20 @@ namespace POSProject
             }
         }
 
-        private bool CheckDuplicatePershkrimi()
+        private PaymentMethodModel GetMethodFromForm()
         {
-            try
+            return new PaymentMethodModel
             {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-                    string query = @"SELECT COUNT(*)
-                                     FROM ""MenyratPageses""
-                                     WHERE LOWER(TRIM(""Pershkrimi"")) = LOWER(TRIM(@Pershkrimi))
-                                     AND (@Id IS NULL OR ""Id"" <> @Id;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Pershkrimi", txtBoxPershkrimi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Id", (object?)selectedMethodId ?? DBNull.Value);
-                        long count = (long)cmd.ExecuteScalar();
-                        if(count > 0)
-                        {
-                            AutoClosingMessageBox.Show("Ekziston një mënyrë pagese me të njëjtin përshkrim.", "Informacion", 1000);
-                            txtBoxPershkrimi.Focus();
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }catch(Exception ex)
-            {
-                MessageBox.Show("Gabim gjatë verifikimit të përshkrimit: " + ex.Message);
-                return false;
-            }
+                Id = selectedMethodId ?? 0,
+                Rendorja = int.TryParse(txtBoxRendorja.Text.Trim(), out int rendorja) ? rendorja : 0,
+                Pershkrimi = txtBoxPershkrimi.Text.Trim(),
+                Shkurtesa = txtBoxShkurtesa.Text.Trim(),
+                KerkonReference = chckBoxKerkon.Checked,
+                Tipi = cmbBoxTipi.Text.Trim(),
+                ValutaDefault = cmbBoxValutaDefault.Text.Trim()
+            };
         }
-
-        private bool CheckDuplicateRendorja()
-        {
-            try
-            {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-                    string query = @"SELECT COUNT(*)
-                                    FROM ""MenyratPageses""
-                                    WHERE LOWER(TRIM(""Rendorja"")) = LOWER(TRIM(@Rendorja))
-                                    AND (@Id IS NULL OR ""Id"" <> @Id;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Rendorja", int.Parse(txtBoxRendorja.Text.Trim()));
-                        cmd.Parameters.AddWithValue("@Id", (object?)selectedMethodId ?? DBNull.Value);
-                        long count = (long)cmd.ExecuteScalar();
-                        if(count > 0)
-                        {
-                            AutoClosingMessageBox.Show("Ekziston tashmë një mënyrë pagese me të njëjtin numër rendor.", "Informacion", 1000);
-                            txtBoxRendorja.Focus();
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }catch(Exception ex)
-            {
-                MessageBox.Show("Gabim gjatë verifikimit të rendores: " + ex.Message);
-                return false;
-            }
-        }
-        private bool CheckDuplicateShkurtesa()
-        {
-            try
-            {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-                    string query = @"SELECT COUNT(*)
-                                    FROM ""MenyratPageses""
-                                    WHERE LOWER(TRIM(""Shkurtesa"")) = LOWER(TRIM(@Shkurtesa))
-                                    AND (@ID IS NULL OR ""Id"" <> @Id;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Shkurtesa", txtBoxShkurtesa.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Id", (object?)selectedMethodId ?? DBNull.Value);
-                        long count = (long)cmd.ExecuteScalar();
-                        if (count > 0)
-                        {
-                            AutoClosingMessageBox.Show("Ekziston tashmë një mënyrë pagese me të njëjtën shkurtesë.", "Informacion", 1000);
-                            txtBoxShkurtesa.Focus();
-                            return false;
-                        }
-                    }
-                }
-            return true;
-            }catch(Exception ex){
-                MessageBox.Show("Gabim gjatë verifikimit të shkurtesës: " + ex.Message);
-                return false;
-            }
-        }
-        private bool ValidateMethod()
-        {
-            if (string.IsNullOrWhiteSpace(txtBoxRendorja.Text))
-            {
-                MessageBox.Show("Rendorja është e detyrueshme.");
-                txtBoxRendorja.Focus();
-                return false;
-            }
-
-            if (!int.TryParse(txtBoxRendorja.Text.Trim(), out int rendorja) || rendorja <= 0)
-            {
-                MessageBox.Show("Rendorja duhet të jetë numër pozitiv.");
-                txtBoxRendorja.Focus();
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtBoxPershkrimi.Text))
-            {
-                MessageBox.Show("Përshkrimi është i detyrueshëm.");
-                txtBoxPershkrimi.Focus();
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtBoxShkurtesa.Text))
-            {
-                MessageBox.Show("Shkurtesa është e detyrueshme.");
-                txtBoxShkurtesa.Focus();
-                return false;
-            }
-
-            if (cmbBoxTipi.SelectedIndex == -1)
-            {
-                MessageBox.Show("Zgjidh tipin.");
-                cmbBoxTipi.Focus();
-                return false;
-            }
-
-            if (cmbBoxValutaDefault.SelectedIndex == -1)
-            {
-                MessageBox.Show("Zgjidh valutën default.");
-                cmbBoxValutaDefault.Focus();
-                return false;
-            }
-
-            if (!CheckDuplicatePershkrimi())
-                return false;
-
-            if (!CheckDuplicateShkurtesa())
-                return false;
-
-            if (!CheckDuplicateRendorja())
-                return false;
-
-            return true;
-        }
+      
         private void ClearFields()
         {
             selectedMethodId = null;
@@ -338,7 +165,7 @@ namespace POSProject
         private string GenerateShkurtesa(string pershkrimi)
         {
             var words = pershkrimi.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if(words.Length == 1)
+            if (words.Length == 1)
             {
                 string word = words[0].ToUpper();
                 return word.Length <= 5 ? word : word.Substring(0, 5);
@@ -352,44 +179,27 @@ namespace POSProject
 
         private void btnUpdate_Click(object sender, EventArgs e)
         {
-            if(selectedMethodId == null)
+            if (selectedMethodId == null)
             {
                 MessageBox.Show("Zgjidh një rresht për përditësim.");
                 return;
             }
-            if (!ValidateMethod())
-                return;
             try
             {
-                using (var conn = Db.GetConnection())
+                var method = GetMethodFromForm();
+                var result = _paymentMethodService.Update(method);
+
+                if (!result.Success)
                 {
-                    conn.Open();
-                    string query = @"UPDATE ""MenyratPageses""
-                                     SET ""Pershkrimi"" = @Pershkrimi,
-                                         ""Shkurtesa"" = @Shkurtesa,
-                                         ""KerkonReference"" = @KerkonReference,
-                                         ""Tipi"" = @Tipi,
-                                         ""ValutaDefault"" = @ValutaDefault,
-                                         ""Rendorja"" = @Rendorja,
-                                         ""Updated_At"" = CURRENT_TIMESTAMP
-                                         WHERE ""Id"" = @Id;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Pershkrimi", txtBoxPershkrimi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Shkurtesa", txtBoxShkurtesa.Text.Trim());
-                        cmd.Parameters.AddWithValue("@KerkonReference", chckBoxKerkon.Checked);
-                        cmd.Parameters.AddWithValue("@Tipi", cmbBoxTipi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@ValutaDefault", cmbBoxValutaDefault.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Rendorja", int.Parse(txtBoxRendorja.Text.Trim()));
-                        cmd.Parameters.AddWithValue("@Id", selectedMethodId.Value);
-                        cmd.ExecuteNonQuery();
-                    }
-                    AutoClosingMessageBox.Show("Mënyra e pagesës u përditësua me sukses.", "Informacion", 900);
-                    NotificationService.Create("PAYMENT_METHOD_UPDATED", "Info", "Mënyrë pagese e përditësuar", txtBoxPershkrimi.Text, "MenyratPageses", selectedMethodId.Value, Session.UserId);
-                    LoadMethods();
-                    ClearFields();
+                    MessageBox.Show(result.Message);
+                    return;
                 }
-            }catch(Exception ex)
+
+                AutoClosingMessageBox.Show(result.Message, "Informacion", 900);
+                LoadMethods();
+                ClearFields();
+            }
+            catch (Exception ex)
             {
                 MessageBox.Show("Gabim gjatë përditësimit të mënyrës së pagesës: " + ex.Message);
             }
@@ -397,38 +207,35 @@ namespace POSProject
 
         private void btnDelete_Click(object sender, EventArgs e)
         {
-            if(selectedMethodId == null)
+            if (selectedMethodId == null)
             {
                 MessageBox.Show("Zgjedh një rresht për fshirje.");
                 return;
             }
-            DialogResult result = MessageBox.Show(
+            DialogResult resultConfirm = MessageBox.Show(
                 "A jeni i sigurt që dëshironi të ç'aktivizoni këtë mënyrë pagese?",
                 "Konfirmim",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
-            if (result != DialogResult.Yes)
+
+            if (resultConfirm != DialogResult.Yes)
                 return;
+
             try
             {
-                using (var conn = Db.GetConnection())
+                var result = _paymentMethodService.Deactivate(selectedMethodId.Value, txtBoxPershkrimi.Text.Trim());
+
+                if (!result.Success)
                 {
-                    conn.Open();
-                    string query = @"UPDATE ""MenyratPageses""
-                                     SET ""Aktiv"" = FALSE,
-                                         ""Updated_At"" = CURRENT_TIMESTAMP
-                                     WHERE ""Id"" = @Id;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", selectedMethodId.Value);
-                        cmd.ExecuteNonQuery();
-                    }
+                    MessageBox.Show(result.Message);
+                    return;
                 }
-                AutoClosingMessageBox.Show("Mënyra e pagesës u ç'aktivizua me sukses.", "Informacion", 900);
-                NotificationService.Create("PAYMENT_METHOD_DEACTIVATED", "Info", "Mënyrë pagese e ç'aktivizuar", txtBoxPershkrimi.Text, "MenyratPageses", selectedMethodId.Value, Session.UserId);
+
+                AutoClosingMessageBox.Show(result.Message, "Informacion", 900);
                 LoadMethods();
                 ClearFields();
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 MessageBox.Show("Gabim gjatë ç'aktivizimit të mënyrës së pagesës: " + ex.Message);
             }
@@ -446,39 +253,29 @@ namespace POSProject
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            if (!ValidateMethod())
-                return;
             try
             {
-                using (var conn = Db.GetConnection())
+                var method = GetMethodFromForm();
+                var result = _paymentMethodService.Save(method);
+
+                if (!result.Success)
                 {
-                    conn.Open();
-                    string query = @"INSERT INTO ""MenyratPageses""
-                                     (""Pershkrimi"", ""Shkurtesa"", ""Tipi"", ""ValutaDefault"", ""KerkonReference"", ""Aktiv"", ""Created_At"", ""Updated_At"", ""Rendorja"") 
-                                     VALUES (@Pershkrimi, @Shkurtesa, @Tipi , @ValutaDefault, @KerkonReference, TRUE, CURRENT_TIMESTAMP, NULL, @Rendorja);";
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Pershkrimi", txtBoxPershkrimi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Shkurtesa", txtBoxShkurtesa.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Tipi", cmbBoxTipi.Text.Trim());
-                        cmd.Parameters.AddWithValue("@ValutaDefault", cmbBoxValutaDefault.Text.Trim());
-                        cmd.Parameters.AddWithValue("@KerkonReference", chckBoxKerkon.Checked);
-                        cmd.Parameters.AddWithValue("@Rendorja", int.Parse(txtBoxRendorja.Text.Trim()));
-                        cmd.ExecuteNonQuery();
-                    }
-                    AutoClosingMessageBox.Show("Mënyra e pagesës u ruajt me sukses.", "Informacion", 900);
-                    NotificationService.Create("PAYMENT_METHOD_ADDED", "Info", "Mënyrë pagese e re", txtBoxPershkrimi.Text, "MenyratPageses", null, Session.UserId);
-                    LoadMethods();
-                    ClearFields();        
+                    MessageBox.Show(result.Message);
+                    return;
                 }
-            }catch(Exception ex)
+
+                AutoClosingMessageBox.Show(result.Message, "Informacion", 900);
+                LoadMethods();
+                ClearFields();
+            }
+            catch (Exception ex)
             {
                 MessageBox.Show("Gabim gjatë ruajtjes së mënyrës së pagesës: " + ex.Message);
             }
         }
         private void txtBoxRendorja_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Down)
+            if (e.KeyCode == Keys.Down)
             {
                 txtBoxPershkrimi.Focus();
                 e.SuppressKeyPress = true;
@@ -487,7 +284,7 @@ namespace POSProject
 
         private void txtBoxPershkrimi_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Down)
+            if (e.KeyCode == Keys.Down)
             {
                 txtBoxShkurtesa.Focus();
                 e.SuppressKeyPress = true;
@@ -496,7 +293,7 @@ namespace POSProject
 
         private void txtBoxShkurtesa_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Down)
+            if (e.KeyCode == Keys.Down)
             {
                 chckBoxKerkon.Checked = true;
                 e.SuppressKeyPress = true;
@@ -545,15 +342,17 @@ namespace POSProject
             if (cmbBoxTipi.SelectedItem == null)
                 return;
             string tipi = cmbBoxTipi.SelectedItem.ToString();
-            if(tipi == "CASH")
+            if (tipi == "CASH")
             {
                 chckBoxKerkon.Checked = false;
                 chckBoxNukKerkon.Checked = true;
-            }else if (tipi == "POS" || tipi == "BANK" || tipi == "CARD"|| tipi == "VOUCHER")
+            }
+            else if (tipi == "POS" || tipi == "BANK" || tipi == "CARD" || tipi == "VOUCHER")
             {
                 chckBoxKerkon.Checked = true;
                 chckBoxNukKerkon.Checked = false;
             }
         }
+
     }
 }

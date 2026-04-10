@@ -8,11 +8,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using POSProject.repositories.auth;
+using POSProject.services;
 
 namespace POSProject
 {
     public partial class FrmSignUp : Form
     {
+        private readonly UserService _userService;
         public FrmSignUp()
         {
             InitializeComponent();
@@ -21,6 +24,9 @@ namespace POSProject
             this.AcceptButton = btnSignUp;
             txtBoxUsername.KeyDown += txtUsername_KeyDown;
             txtBoxPassword.KeyDown += txtPassword_KeyDown;
+
+            IUserRepository userRepo = new UserRepository();
+            _userService = new UserService(userRepo);
         }
 
         private void FrmSignUp_Load(object sender, EventArgs e)
@@ -32,67 +38,13 @@ namespace POSProject
             }
         }
 
-        private bool UsernameExists(string username)
-        {
-            using(var connection = Db.GetConnection())
-            {
-                connection.Open();
-                string query = @"SELECT COUNT(*) FROM ""perdoruesit"" WHERE ""username""=@username";
-
-                using(var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                {
-                    cmd.Parameters.AddWithValue("@username", username);
-                    int count = Convert.ToInt32(cmd.ExecuteScalar());
-                    return count > 0;
-                }
-            }
-        }
-
-        private void CreateUser(string username, string passwordHash)
-        {
-            using (var connection = Db.GetConnection())
-            {
-                connection.Open();
-                string query = @"INSERT INTO ""perdoruesit""
-                               (""username"",""password_hash"",""role"",""is_active"",""created_at"")
-                               VALUES (@username, @passwordHash, @role, TRUE, NOW())";
-
-                using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                {
-                    cmd.Parameters.AddWithValue("@username", username);
-                    cmd.Parameters.AddWithValue("@passwordHash", passwordHash);
-                    cmd.Parameters.AddWithValue("@role", "cashier");
-                    cmd.ExecuteNonQuery();
-                }
-            }
-        }
-
         private bool ValidateSignUp()
         {
-            string username = txtBoxUsername.Text.Trim();
-            string password = txtBoxPassword.Text;
-            string confirmPassword = txtBoxConfirm.Text;
-            if(string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
+            if (string.IsNullOrWhiteSpace(txtBoxUsername.Text) ||
+                string.IsNullOrWhiteSpace(txtBoxPassword.Text) ||
+                string.IsNullOrWhiteSpace(txtBoxConfirm.Text))
             {
                 MessageBox.Show("Plotësoni të gjitha fushat.");
-                return false;
-            }
-            
-            if(password != confirmPassword)
-            {
-                MessageBox.Show("Passwordet nuk përputhen.");
-                return false;
-            }
-            
-            if(password.Length < 6)
-            {
-                MessageBox.Show("Passwordi duhet të jetë të paktën 6 karaktere.");
-                return false;
-            }
-
-            if (UsernameExists(username))
-            {
-                MessageBox.Show("Ky username është i zënë. Zgjidhni një tjetër.");
                 return false;
             }
 
@@ -125,15 +77,21 @@ namespace POSProject
 
         private void btnSignUp_Click(object sender,EventArgs e)
         {
-            if (ValidateSignUp())
+            if (!ValidateSignUp())
+                return;
+
+            var result = _userService.CreateUser(
+                txtBoxUsername.Text,
+                txtBoxPassword.Text,
+                txtBoxConfirm.Text
+                );
+            if (!result.Success)
             {
-                string username = txtBoxUsername.Text.Trim();
-                string password = txtBoxPassword.Text;
-                string passwordHash = PasswordHelper.HashPassword(password);
-                CreateUser(username, passwordHash);
-                MessageBox.Show("Përdoruesi u krijua me sukses.");
-                ClearForm();
+                MessageBox.Show(result.Message);
+                return;
             }
+            MessageBox.Show(result.Message);
+            ClearForm();
         }
 
         private void ClearForm()
