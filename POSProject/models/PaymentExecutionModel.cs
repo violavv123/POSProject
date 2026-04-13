@@ -26,5 +26,7 @@ namespace POSProject
         public int PerdoruesiId { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ShiftId { get; set; }
+        public int? GiftCardId { get; set; }
+
     }
 }

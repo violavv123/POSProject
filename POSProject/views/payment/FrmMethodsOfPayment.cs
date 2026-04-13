@@ -92,6 +92,7 @@ namespace POSProject
             cmbBoxTipi.Items.Add("BANK");
             cmbBoxTipi.Items.Add("VOUCHER");
             cmbBoxTipi.Items.Add("TRANSFER");
+            cmbBoxTipi.Items.Add("GIFTCARD");
             cmbBoxTipi.Items.Add("TJETER");
             cmbBoxTipi.SelectedIndex = -1;
         }

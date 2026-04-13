@@ -10,6 +10,8 @@ using System.Windows.Forms;
 using System.Xml.Serialization;
 using POSProject.repositories.payments;
 using POSProject.services;
+using POSProject.services.products;
+using POSProject.repositories.products;
 
 namespace POSProject
 {
@@ -54,6 +56,9 @@ namespace POSProject
         private SplitInputMode splitInputMode = SplitInputMode.None;
         private bool suppressPrimaryFocus = false;
         private readonly PaymentService _paymentService;
+        private readonly GiftCardService _giftCardService;
+        private decimal _giftCardBalance1 = 0m;
+        private decimal _giftCardBalance2 = 0m;
 
         public FrmPagesa(decimal totaliFinal, decimal paguarFillestar, string komenti = "", List<InvoiceItemModel> items = null, decimal totaliPaZbritje = 0m, decimal zbritjaTotale = 0m)
         {
@@ -62,6 +67,7 @@ namespace POSProject
             IPaymentMethodRepository methodRepo = new PaymentMethodRepository();
             IExchangeRateRepository exchangeRateRepo = new ExchangeRateRepository();
             _paymentService = new PaymentService(methodRepo, exchangeRateRepo);
+            _giftCardService = new GiftCardService(new GiftCardRepository());
 
             _totaliPaZbritje = totaliPaZbritje;
             _zbritjaTotale = zbritjaTotale;
@@ -272,10 +278,20 @@ namespace POSProject
 
             labelMenyra.Text = pershkrimi;
             btnValuta.Text = valutaDefault;
-            if (!tipiPageses.Trim().Equals("CASH", StringComparison.OrdinalIgnoreCase) && kerkonReference)
-                txtBoxNrReference.Text = $"RF-{DateTime.Now:yyyyMMddHHmmss}";
+            bool isCash = tipiPageses.Trim().Equals("CASH", StringComparison.OrdinalIgnoreCase);
+            bool isGiftCard = tipiPageses.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+
+            if (!isCash && kerkonReference)
+            {
+                if (isGiftCard)
+                    txtBoxNrReference.Clear();
+                else
+                    txtBoxNrReference.Text = $"RF-{DateTime.Now:yyyyMMddHHmmss}";
+            }
             else
+            {
                 txtBoxNrReference.Clear();
+            }
 
             UpdateCashFieldsVisibility();
         }
@@ -425,6 +441,105 @@ namespace POSProject
                     return false;
                 }
             }
+            bool isGift1 = tipiPageses.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+            bool isGift2 = tipiPageses2.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+
+            if (!splitPaymentEnabled)
+            {
+                if (isGift1)
+                {
+                    if (string.IsNullOrWhiteSpace(txtBoxNrReference.Text))
+                    {
+                        AutoClosingMessageBox.Show("Shkruaj kodin e gift card.", "Informacion", 900);
+                        txtBoxNrReference.Focus();
+                        return false;
+                    }
+
+                    var card = _giftCardService.GetByCode(txtBoxNrReference.Text.Trim());
+                    if (card == null)
+                    {
+                        AutoClosingMessageBox.Show("Gift card nuk u gjet.", "Informacion", 900);
+                        txtBoxNrReference.Focus();
+                        return false;
+                    }
+
+                    if (!card.Statusi.Trim().Equals("Aktiv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        AutoClosingMessageBox.Show("Gift card nuk është aktiv.", "Informacion", 900);
+                        txtBoxNrReference.Focus();
+                        return false;
+                    }
+
+                    if (card.Expires_At.HasValue && card.Expires_At.Value < DateTime.Now)
+                    {
+                        AutoClosingMessageBox.Show("Gift card ka skaduar.", "Informacion", 900);
+                        txtBoxNrReference.Focus();
+                        return false;
+                    }
+
+                    decimal amount = ParseDecimal(txtBoxPaguar.Text);
+                    if (card.BilanciAktual < amount)
+                    {
+                        AutoClosingMessageBox.Show($"Bilanci i gift card është {card.BilanciAktual:0.00} €.", "Informacion", 1200);
+                        txtBoxNrReference.Focus();
+                        return false;
+                    }
+
+                    _giftCardBalance1 = card.BilanciAktual;
+                }
+            }
+            else
+            {
+                if (isGift1)
+                {
+                    if (string.IsNullOrWhiteSpace(txtBoxNrReference.Text))
+                    {
+                        AutoClosingMessageBox.Show("Shkruaj kodin e gift card 1.", "Informacion", 900);
+                        return false;
+                    }
+
+                    var card1 = _giftCardService.GetByCode(txtBoxNrReference.Text.Trim());
+                    if (card1 == null)
+                    {
+                        AutoClosingMessageBox.Show("Gift card 1 nuk u gjet.", "Informacion", 900);
+                        return false;
+                    }
+
+                    decimal amount1 = ParseDecimal(txtBoxShuma1.Text);
+                    if (card1.BilanciAktual < amount1)
+                    {
+                        AutoClosingMessageBox.Show($"Bilanci i gift card 1 është {card1.BilanciAktual:0.00} €.", "Informacion", 1200);
+                        return false;
+                    }
+
+                    _giftCardBalance1 = card1.BilanciAktual;
+                }
+
+                if (isGift2)
+                {
+                    if (string.IsNullOrWhiteSpace(txtBoxNrReference2.Text))
+                    {
+                        AutoClosingMessageBox.Show("Shkruaj kodin e gift card 2.", "Informacion", 900);
+                        return false;
+                    }
+
+                    var card2 = _giftCardService.GetByCode(txtBoxNrReference2.Text.Trim());
+                    if (card2 == null)
+                    {
+                        AutoClosingMessageBox.Show("Gift card 2 nuk u gjet.", "Informacion", 900);
+                        return false;
+                    }
+
+                    decimal amount2 = ParseDecimal(txtBoxShuma2.Text);
+                    if (card2.BilanciAktual < amount2)
+                    {
+                        AutoClosingMessageBox.Show($"Bilanci i gift card 2 është {card2.BilanciAktual:0.00} €.", "Informacion", 1200);
+                        return false;
+                    }
+
+                    _giftCardBalance2 = card2.BilanciAktual;
+                }
+            }
             return true;
         }
 
@@ -524,7 +639,14 @@ namespace POSProject
             }
 
             decimal shuma1 = splitPaymentEnabled ? ParseDecimal(txtBoxShuma1.Text) : _totali;
-            decimal paguar1 = isCash1 ? ParseDecimal(txtBoxPaguar.Text) : GetMethod1AmountInOwnCurrency();
+            bool isGift1 = tipiPageses.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+
+            decimal paguar1 = isCash1
+                ? ParseDecimal(txtBoxPaguar.Text)
+                : isGift1
+                    ? shuma1
+                    : GetMethod1AmountInOwnCurrency();
+
             decimal cashBack1 = 0m;
 
             if (isCash1)
@@ -557,7 +679,8 @@ namespace POSProject
                 ReferenceNr = string.IsNullOrWhiteSpace(txtBoxNrReference.Text) ? null : txtBoxNrReference.Text.Trim(),
                 Statusi = "Kompletuar",
                 Koment = _komenti,
-                PerdoruesiId = Session.UserId
+                PerdoruesiId = Session.UserId,
+                GiftCardId = null
             });
 
             if (splitPaymentEnabled)
@@ -567,7 +690,13 @@ namespace POSProject
                 string shkurtesa2 = drv2?["Shkurtesa"]?.ToString() ?? "";
 
                 decimal shuma2Eur = ParseDecimal(txtBoxShuma2.Text);
-                decimal paguar2 = ParseDecimal(txtBoxShuma2Tjeter.Text);
+                bool isGift2 = tipiPageses2.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+
+                decimal paguar2 = isCash2
+                    ? ParseDecimal(txtBoxShuma2Tjeter.Text)
+                    : isGift2
+                        ? shuma2Eur
+                        : ParseDecimal(txtBoxShuma2Tjeter.Text);
                 decimal cashBack2 = 0m;
 
                 if (isCash2)
@@ -592,7 +721,8 @@ namespace POSProject
                     ReferenceNr = string.IsNullOrWhiteSpace(txtBoxNrReference2.Text) ? null : txtBoxNrReference2.Text.Trim(),
                     Statusi = "Kompletuar",
                     Koment = _komenti,
-                    PerdoruesiId = Session.UserId
+                    PerdoruesiId = Session.UserId,
+                    GiftCardId = null
                 });
             }
 
@@ -660,6 +790,7 @@ namespace POSProject
         {
             bool isCash = tipiPageses.Trim().Equals("CASH", StringComparison.OrdinalIgnoreCase);
             bool isPOS = tipiPageses.Trim().Equals("POS", StringComparison.OrdinalIgnoreCase);
+            bool isGiftCard = tipiPageses.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
 
             panelKusuri.Visible = isCash;
             labelPaguar.Visible = true;
@@ -688,6 +819,36 @@ namespace POSProject
                 txtBoxPaguar.Text = _totali.ToString("0.00");
                 txtBoxKusuri.Text = "0.00";
             }
+            else if (isGiftCard)
+            {
+                txtBoxPaguar.ReadOnly = true;
+                txtBoxKusuri.Text = "0.00";
+
+                bool showReference = kerkonReference;
+                txtBoxNrReference.Visible = showReference;
+                labelNrReference.Visible = showReference;
+
+                string code = txtBoxNrReference.Text.Trim();
+
+                if (!string.IsNullOrWhiteSpace(code))
+                {
+                    var card = _giftCardService.GetByCode(code);
+                    if (card != null && card.Statusi.Trim().Equals("Aktiv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _giftCardBalance1 = card.BilanciAktual;
+                        decimal amountToUse = Math.Min(_totali, _giftCardBalance1);
+                        txtBoxPaguar.Text = amountToUse.ToString("0.00");
+                    }
+                    else
+                    {
+                        txtBoxPaguar.Text = "0.00";
+                    }
+                }
+                else
+                {
+                    txtBoxPaguar.Text = "0.00";
+                }
+            }
             else
             {
                 txtBoxPaguar.ReadOnly = true;
@@ -695,12 +856,15 @@ namespace POSProject
                 txtBoxPaguar.Text = _totali.ToString("0.00");
             }
 
-            bool showReference = !isCash && kerkonReference;
-            txtBoxNrReference.Visible = showReference;
-            labelNrReference.Visible = showReference;
+            if (!isGiftCard)
+            {
+                bool showReference = !isCash && kerkonReference;
+                txtBoxNrReference.Visible = showReference;
+                labelNrReference.Visible = showReference;
 
-            if (!showReference)
-                txtBoxNrReference.Clear();
+                if (!showReference)
+                    txtBoxNrReference.Clear();
+            }
         }
 
         private void CalculateKusuri()

@@ -111,10 +111,15 @@ namespace POSProject
             btnReturn.FlatStyle = FlatStyle.Flat;
             btnReturn.FlatAppearance.BorderSize = 0;
 
+            btnGiftCard.MouseEnter += btn_MouseEnter;
+            btnGiftCard.MouseLeave += btn_MouseLeave;
+            btnGiftCard.FlatStyle = FlatStyle.Flat;
+            btnGiftCard.FlatAppearance.BorderSize = 0;
+
             btnDiscountInvoice.Click += btnDiscountInvoice_Click;
             btnDiscountItem.Click += btnDiscountItem_Click;
             btnReturn.Click += btnReturn_Click;
-
+            btnGiftCard.Click += btnGiftCard_Click;
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -168,6 +173,7 @@ namespace POSProject
             btnAddProducts.Visible = Session.Role == "admin";
             btnMethodPayment.Visible = Session.Role == "admin";
             btnNotifications.Visible = Session.Role == "admin";
+            btnGiftCard.Visible = Session.Role == "admin";
             UpdateNotificationBadge();
         }
 
@@ -847,6 +853,20 @@ namespace POSProject
             var returnService = new ReturnService(returnRepo);
             FrmReturns frm = new FrmReturns(returnService);
             frm.ShowDialog();
+        }
+
+        private void btnGiftCard_Click(object sender, EventArgs e)
+        {
+            if (Session.Role != "admin")
+            {
+                MessageBox.Show("Nuk keni qasje në menaxhimin e gift cards.");
+                return;
+            }
+
+            using (var frm = new POSProject.views.products.FrmGiftCard())
+            {
+                frm.ShowDialog();
+            }
         }
     }
 }

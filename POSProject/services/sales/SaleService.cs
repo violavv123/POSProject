@@ -7,6 +7,7 @@ using POSProject.models;
 using POSProject.repositories.payments;
 using POSProject.repositories.products;
 using POSProject.repositories.sales;
+using POSProject.services.products;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
 
 namespace POSProject.services.sales
@@ -16,12 +17,14 @@ namespace POSProject.services.sales
         private readonly ISaleRepository _saleRepo;
         private readonly IProductRepository _productRepo;
         private readonly IPaymentExecutionRepository _paymentRepo;
+        private readonly GiftCardService _giftCardService;
 
         public SaleService(ISaleRepository saleRepo, IProductRepository productRepo, IPaymentExecutionRepository paymentRepo)
         {
             _saleRepo = saleRepo;
             _productRepo = productRepo;
             _paymentRepo = paymentRepo;
+            _giftCardService = new GiftCardService(new GiftCardRepository());
         }
 
         public int SaveSale(SaleModel sale, List<SaleDetailModel> detale, List<PaymentExecutionModel> payments)
@@ -61,6 +64,24 @@ namespace POSProject.services.sales
                 {
                     payment.ShitjaId = newShitjaId;
                     _paymentRepo.InsertPaymentExecution(payment, connection, transaction);
+                    bool isGiftCard = !string.IsNullOrWhiteSpace(payment.Tipi) &&
+                      payment.Tipi.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
+
+                    if (isGiftCard)
+                    {
+                        if (string.IsNullOrWhiteSpace(payment.ReferenceNr))
+                            throw new Exception("Kodi i gift card mungon gjatë ruajtjes.");
+
+                        _giftCardService.RedeemGiftCard(
+                            payment.ReferenceNr.Trim(),
+                            payment.ShumaPaguar,
+                            newShitjaId,
+                            payment.Id,
+                            payment.PerdoruesiId,
+                            connection,
+                            transaction
+                        );
+                    }
                 }
 
                 transaction.Commit();

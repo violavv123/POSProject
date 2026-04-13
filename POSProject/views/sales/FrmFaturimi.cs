@@ -9,13 +9,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Drawing.Printing;
 using System.Linq.Expressions;
-using POSProject.services;
 using POSProject.services.sales;
 using POSProject.repositories.subjects;
 using POSProject.repositories.sales;
 using POSProject.repositories.products;
 using POSProject.repositories.payments;
+using POSProject.services.products;
 using POSProject.models;
+using POSProject.services.subjects;
 
 namespace POSProject
 {
@@ -37,6 +38,9 @@ namespace POSProject
 
         private readonly SubjectService _subjectService;
         private readonly SaleService _saleService;
+        private readonly GiftCardService _giftCardService;
+        private readonly List<int> GIFT_CARD_ARTIKULLI_IDS = new List<int> { 7, 8, 9, 10 };
+        private List<string> _issuedGiftCardCodes = new List<string>();
         public FrmFaturimi(List<InvoiceItemModel> items, string komenti, decimal totaliFinal, decimal totaliPaZbritje, decimal zbritjaTotale, List<PaymentExecutionModel> payments)
         {
             InitializeComponent();
@@ -44,8 +48,10 @@ namespace POSProject
             ISaleRepository saleRepo = new SaleRepository();
             IProductRepository productRepo = new ProductRepository();
             IPaymentExecutionRepository paymentRepo = new PaymentExecutionRepository();
+
             _subjectService = new SubjectService(subjectRepo);
             _saleService = new SaleService(saleRepo, productRepo, paymentRepo);
+            _giftCardService = new GiftCardService(new GiftCardRepository());
             printDocument.PrintPage += PrintDocument_PrintPage;
             invoiceitems = items ?? new List<InvoiceItemModel>();
             txtBoxSubjekti.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
@@ -151,7 +157,11 @@ namespace POSProject
 
                 if (!string.IsNullOrWhiteSpace(p.ReferenceNr))
                 {
-                    g.DrawString("Reference Nr: " + p.ReferenceNr, normalFont, Brushes.Black, 60, y);
+                    if (p.Tipi != null && p.Tipi.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase))
+                        g.DrawString("Gift Card Code: " + p.ReferenceNr, normalFont, Brushes.Black, 60, y);
+                    else
+                        g.DrawString("Reference Nr: " + p.ReferenceNr, normalFont, Brushes.Black, 60, y);
+
                     y += 20;
                 }
             }
@@ -193,6 +203,18 @@ namespace POSProject
 
             y += 30;
 
+            if (_issuedGiftCardCodes.Any())
+            {
+                y += 20;
+                g.DrawString("Gift Cards të lëshuara:", boldFont, Brushes.Black, 40, y);
+                y += 20;
+
+                foreach (var code in _issuedGiftCardCodes)
+                {
+                    g.DrawString(code, normalFont, Brushes.Black, 60, y);
+                    y += 20;
+                }
+            }
             g.DrawString("Totali: " + txtBoxTotali.Text + " €", boldFont, Brushes.Black, 350, y);
         }
 
@@ -428,10 +450,23 @@ namespace POSProject
 
                 int newShitjaId = _saleService.SaveSale(shitja, detale, payments);
 
+                CreateGiftCardsForSale(newShitjaId);
+
                 savedShitjaId = newShitjaId;
                 InvoiceSaved = true;
 
-                AutoClosingMessageBox.Show("Fatura u ruajt me sukses.", "Informacion", 900);
+                string successMessage = "Fatura u ruajt me sukses.";
+
+                if (_issuedGiftCardCodes.Count > 0)
+                {
+                    successMessage += "\n\nGift card të krijuara:";
+                    foreach (string code in _issuedGiftCardCodes)
+                    {
+                        successMessage += $"\n- {code}";
+                    }
+                }
+
+                MessageBox.Show(successMessage, "Informacion", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -488,6 +523,42 @@ namespace POSProject
             txtBoxNrReference.ReadOnly = true;
         }
 
-        
+        private bool IsGiftCardItem(InvoiceItemModel item)
+        {
+            return GIFT_CARD_ARTIKULLI_IDS.Contains(item.ArtikulliId);
+        }
+
+        private List<InvoiceItemModel> GetGiftCardItems()
+        {
+            return invoiceitems
+                .Where(IsGiftCardItem)
+                .ToList();
+        }
+
+        private void CreateGiftCardsForSale(int shitjaId)
+        {
+            _issuedGiftCardCodes.Clear();
+
+            var giftCardItems = GetGiftCardItems();
+
+            foreach (var item in giftCardItems)
+            {
+                int quantity = Convert.ToInt32(item.Sasia);
+
+                for (int i = 0; i < quantity; i++)
+                {
+                    decimal vleraKarteles = item.CmimiFinal > 0
+                        ? item.CmimiFinal
+                        : item.Cmimi;
+
+                    GiftCardModel card = _giftCardService.IssueGiftCardFromSale(
+                        vleraKarteles,
+                        shitjaId,
+                        Session.UserId);
+
+                    _issuedGiftCardCodes.Add(card.Kodi);
+                }
+            }
+        }
     }
 }

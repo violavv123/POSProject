@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using POSProject.models;
 using POSProject.repositories.subjects;
 
-namespace POSProject.services
+namespace POSProject.services.subjects
 {
     public class SubjectService
     {

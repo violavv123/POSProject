@@ -59,6 +59,7 @@
             btnDiscountItem = new Button();
             btnDiscountInvoice = new Button();
             btnReturn = new Button();
+            btnGiftCard = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
@@ -369,7 +370,7 @@
             // btnShift
             // 
             btnShift.BackColor = Color.Coral;
-            btnShift.Location = new Point(245, 608);
+            btnShift.Location = new Point(142, 608);
             btnShift.Name = "btnShift";
             btnShift.Size = new Size(128, 56);
             btnShift.TabIndex = 31;
@@ -379,7 +380,7 @@
             // btnDiscountItem
             // 
             btnDiscountItem.BackColor = Color.LightPink;
-            btnDiscountItem.Location = new Point(371, 608);
+            btnDiscountItem.Location = new Point(268, 608);
             btnDiscountItem.Name = "btnDiscountItem";
             btnDiscountItem.Size = new Size(129, 56);
             btnDiscountItem.TabIndex = 32;
@@ -389,7 +390,7 @@
             // btnDiscountInvoice
             // 
             btnDiscountInvoice.BackColor = Color.YellowGreen;
-            btnDiscountInvoice.Location = new Point(499, 608);
+            btnDiscountInvoice.Location = new Point(396, 608);
             btnDiscountInvoice.Name = "btnDiscountInvoice";
             btnDiscountInvoice.Size = new Size(128, 56);
             btnDiscountInvoice.TabIndex = 33;
@@ -406,12 +407,23 @@
             btnReturn.Text = "Kthim/Rimbursim";
             btnReturn.UseVisualStyleBackColor = false;
             // 
+            // btnGiftCard
+            // 
+            btnGiftCard.BackColor = Color.HotPink;
+            btnGiftCard.Location = new Point(522, 608);
+            btnGiftCard.Name = "btnGiftCard";
+            btnGiftCard.Size = new Size(105, 56);
+            btnGiftCard.TabIndex = 35;
+            btnGiftCard.Text = "Gift Card";
+            btnGiftCard.UseVisualStyleBackColor = false;
+            // 
             // FrmPOS
             // 
             AutoScaleDimensions = new SizeF(9F, 19F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ScrollBar;
             ClientSize = new Size(1308, 669);
+            Controls.Add(btnGiftCard);
             Controls.Add(btnReturn);
             Controls.Add(btnDiscountInvoice);
             Controls.Add(btnDiscountItem);
@@ -483,5 +495,6 @@
         private Button btnDiscountItem;
         private Button btnDiscountInvoice;
         private Button btnReturn;
+        private Button btnGiftCard;
     }
 }
