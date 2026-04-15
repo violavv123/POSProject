@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using POSProject.repositories.notifications;
+using POSProject.services.notifications;
 
 namespace POSProject
 {
@@ -15,6 +17,7 @@ namespace POSProject
     {
         private readonly ShiftService _shiftService = new ShiftService();
         private CashierShiftModel? _activeShift;
+        private readonly INotificationService _notifsService;
 
         private decimal _cashSales = 0m;
         private decimal _cashIn = 0m;
@@ -23,6 +26,8 @@ namespace POSProject
         public FrmShiftOpenClose()
         {
             InitializeComponent();
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
             Load += FrmShiftOpenClose_Load;
             btnOpenShift.Click += btnOpenShift_Click;
             btnCloseShift.Click += btnCloseShift_Click;
@@ -43,7 +48,7 @@ namespace POSProject
             _activeShift = _shiftService.GetOpenShift();
 
             if (_activeShift == null)
-            { 
+            {
                 SetOpenMode();
                 this.AcceptButton = btnOpenShift;
 
@@ -228,7 +233,7 @@ namespace POSProject
             if (!decimal.TryParse(txtBoxOpeningBalance.Text.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out openingBalance))
             {
                 AutoClosingMessageBox.Show("Shkruaj një gjendje hapëse valide.", "Info", 900);
-                NotificationService.Create("INVALID_OPENING_BALANCE", "Warning", "Gjendje hapëse e pavlefshme", $"Përdoruesi {Session.Username} shkroi një gjendje hapëse të pavlefshme: '{txtBoxOpeningBalance.Text.Trim()}'.", Session.Username, Session.UserId);
+                _notifsService.Create("INVALID_OPENING_BALANCE", "Warning", "Gjendje hapëse e pavlefshme", $"Përdoruesi {Session.Username} shkroi një gjendje hapëse të pavlefshme: '{txtBoxOpeningBalance.Text.Trim()}'.", Session.Username, Session.UserId);
                 txtBoxOpeningBalance.Focus();
                 return;
             }
@@ -255,7 +260,7 @@ namespace POSProject
                 _shiftService.OpenShift(Session.UserId, openingBalance, txtBoxShiftComment.Text.Trim());
 
                 AutoClosingMessageBox.Show("Ndërrimi u hap me sukses.", "Info", 900);
-                NotificationService.Create("SHIFT_OPENED", "Success", "Ndërrimi u hap", $"Përdoruesi {Session.Username} hapi një ndërrim me gjendje hapëse {openingBalance:0.00} €.", Session.Username, Session.UserId);
+                _notifsService.Create("SHIFT_OPENED", "Success", "Ndërrimi u hap", $"Përdoruesi {Session.Username} hapi një ndërrim me gjendje hapëse {openingBalance:0.00} €.", Session.Username, Session.UserId);
                 txtBoxOpeningBalance.Clear();
                 txtBoxShiftComment.Clear();
 
@@ -273,7 +278,7 @@ namespace POSProject
                 if (_activeShift == null)
                 {
                     AutoClosingMessageBox.Show("Nuk ka ndërrim aktiv për t'u mbyllur.", "Informacion", 1000);
-                    NotificationService.Create("SHIFT_NOT_ACTIVE", "Warning", "Përpjekje për mbyllje ndërrimi", $"Përdoruesi {Session.Username} përpiqet të mbyll[ ndërrimin pa e hapur.", Session.Username, Session.UserId);
+                    _notifsService.Create("SHIFT_NOT_ACTIVE", "Warning", "Përpjekje për mbyllje ndërrimi", $"Përdoruesi {Session.Username} përpiqet të mbyll[ ndërrimin pa e hapur.", Session.Username, Session.UserId);
                     return;
                 }
 
@@ -303,7 +308,7 @@ namespace POSProject
                     );
 
                     AutoClosingMessageBox.Show("Ndërrimi u mbyll me sukses.", "Info", 900);
-                    NotificationService.Create("SHIFT_CLOSED", "Success", "Ndërrimi u mbyll", $"Përdoruesi {Session.Username} mbylli ndërrimin me gjendje {actualClosing:0.00} €, diferencë {difference:0.00} €.", Session.Username, Session.UserId);
+                    _notifsService.Create("SHIFT_CLOSED", "Success", "Ndërrimi u mbyll", $"Përdoruesi {Session.Username} mbylli ndërrimin me gjendje {actualClosing:0.00} €, diferencë {difference:0.00} €.", Session.Username, Session.UserId);
                     Close();
                 }
                 catch (Exception ex)
@@ -324,7 +329,7 @@ namespace POSProject
             if (_activeShift == null)
             {
                 AutoClosingMessageBox.Show("Nuk ka ndërrim aktiv", "Info", 900);
-                NotificationService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për shtim të cash", "Cash in nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
+                _notifsService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për shtim të cash", "Cash in nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
                 return;
             }
             using (var frm = new FrmCashMovements(_activeShift.Id, "IN"))
@@ -340,7 +345,7 @@ namespace POSProject
             if (_activeShift == null)
             {
                 AutoClosingMessageBox.Show("Nuk ka ndërrim aktiv", "Info", 900);
-                NotificationService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për largim të cash", "Cash out nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
+                _notifsService.Create("NO_ACTIVE_SHIFT", "Warning", "Nuk ka ndërrim aktiv për largim të cash", "Cash out nuk mund të realizohet pa filluar ndërrimi", null, null, Session.UserId);
                 return;
             }
             using (var frm = new FrmCashMovements(_activeShift.Id, "OUT"))

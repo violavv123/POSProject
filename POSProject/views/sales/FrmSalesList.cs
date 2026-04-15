@@ -1,14 +1,28 @@
 ﻿using System.Data;
 using Npgsql;
 using NpgsqlTypes;
+using POSProject.models;
+using POSProject.repositories.auth;
+using POSProject.repositories.sales;
+using POSProject.services;
+using POSProject.services.sales;
 namespace POSProject
 {
     public partial class FrmSalesList : Form
     {
         private AutoCompleteStringCollection cashierList = new AutoCompleteStringCollection();
+        private readonly UserService _userService;
+        private readonly SalesReportService _salesReportService;
         public FrmSalesList()
         {
             InitializeComponent();
+
+            IUserRepository userRepo = new UserRepository();
+            ISalesReportRepository salesReportRepo = new SalesReportRepository();
+
+            _userService = new UserService(userRepo);
+            _salesReportService = new SalesReportService(salesReportRepo);
+
             txtBoxName.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             txtBoxName.AutoCompleteSource = AutoCompleteSource.CustomSource;
             txtBoxName.TextChanged += txtBoxName_TextChanged;
@@ -20,6 +34,7 @@ namespace POSProject
         {
 
             LoadCashierAutoComplete();
+
             datePickerFrom.MaxDate = DateTime.Today;
             datePickerTo.MaxDate = DateTime.Today;
             datePickerTo.Value = DateTime.Today;
@@ -61,26 +76,25 @@ namespace POSProject
 
         private void LoadCashierAutoComplete()
         {
-
             cashierList.Clear();
-            using (var connection = Db.GetConnection())
-            {
-                connection.Open();
-                string query = @"SELECT ""username"" 
-                                FROM ""perdoruesit""
-                                WHERE ""role"" = 'cashier'
-                                ORDER BY ""username""";
 
-                using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        cashierList.Add(reader["username"].ToString());
-                    }
-                }
-                txtBoxName.AutoCompleteCustomSource = cashierList;
+            List<string> cashiers = _userService.GetCashierUsernames();
+            foreach (var cashier in cashiers)
+            {
+                cashierList.Add(cashier);
             }
+
+            txtBoxName.AutoCompleteCustomSource = cashierList;
+        }
+
+        private SalesFilterModel BuildFilter()
+        {
+            return new SalesFilterModel
+            {
+                FromDate = datePickerFrom.Value.Date,
+                ToDate = datePickerTo.Value.Date,
+                Cashier = txtBoxName.Text.Trim()
+            };
         }
 
         private void btnToday_Click(object sender, EventArgs e)
@@ -120,49 +134,20 @@ namespace POSProject
 
         private void SearchSales()
         {
-            if (string.IsNullOrWhiteSpace(txtBoxName.Text))
-                LoadSales();
-            else
-                LoadSalesByName();
+            LoadSales();
         }
 
         private void LoadSales()
         {
             try
             {
-                using (var connection = Db.GetConnection())
-                {
-                    connection.Open();
+                var filter = BuildFilter();
 
-                    string query = @"SELECT 
-                            s.""NrFatures"" AS ""NrFatures"",
-                            s.""DataShitjes"" AS ""DataShitjes"",
-                            p.""username"" AS ""Cashier"",
-                            s.""ShiftId"" AS ""ShiftId"",
-                            s.""Totali"" AS ""Totali"",
-                            s.""Koment"" AS ""Koment""
-                            FROM ""Shitjet"" s
-                            INNER JOIN ""perdoruesit"" p
-                              ON s.""perdoruesi_id"" = p.""id""
-                            LEFT JOIN ""CashierShifts"" cs
-                              ON s.""ShiftId"" = cs.""Id""
-                            WHERE s.""DataShitjes""::date >= @fromDate
-                              AND s.""DataShitjes""::date <= @toDate
-                            ORDER BY s.""DataShitjes"" DESC, s.""Id"" DESC";
+                if (string.IsNullOrWhiteSpace(filter.Cashier))
+                    filter.Cashier = null;
 
-                    using (var cmd = new NpgsqlCommand(query, connection))
-                    {
-                        cmd.Parameters.AddWithValue("@fromDate", datePickerFrom.Value.Date);
-                        cmd.Parameters.AddWithValue("@toDate", datePickerTo.Value.Date);
-
-                        using (var da = new NpgsqlDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            da.Fill(dt);
-                            dataGridView1.DataSource = dt;
-                        }
-                    }
-                }
+                DataTable dt = _salesReportService.GetSales(filter);
+                dataGridView1.DataSource = dt;
 
                 ToggleNoSalesLabel();
                 FormatSalesGrid();
@@ -174,111 +159,16 @@ namespace POSProject
             }
         }
 
-        private void LoadSalesByName()
-        {
-            string cashier = txtBoxName.Text.Trim();
-
-            if (string.IsNullOrWhiteSpace(cashier))
-            {
-                LoadSales();
-                return;
-            }
-
-            try
-            {
-                using (var connection = Db.GetConnection())
-                {
-                    connection.Open();
-
-                    string query = @"SELECT
-                            s.""NrFatures"" AS ""NrFatures"",
-                            s.""DataShitjes"" AS ""DataShitjes"",
-                            p.""username"" AS ""Cashier"",
-                            s.""ShiftId"" AS ""ShiftId"",
-                            s.""Totali"" AS ""Totali"",
-                            s.""Koment"" AS ""Koment""
-                            FROM ""Shitjet"" s
-                            INNER JOIN ""perdoruesit"" p
-                              ON s.""perdoruesi_id"" = p.""id""
-                            LEFT JOIN ""CashierShifts"" cs
-                              ON s.""ShiftId"" = cs.""Id""
-                            WHERE s.""DataShitjes""::date >= @fromDate
-                              AND s.""DataShitjes""::date <= @toDate
-                              AND p.""username"" ILIKE @cashier
-                            ORDER BY s.""DataShitjes"" DESC, s.""Id"" DESC";
-
-                    using (var cmd = new NpgsqlCommand(query, connection))
-                    {
-                        cmd.Parameters.AddWithValue("@fromDate", datePickerFrom.Value.Date);
-                        cmd.Parameters.AddWithValue("@toDate", datePickerTo.Value.Date);
-                        cmd.Parameters.AddWithValue("@cashier", cashier + "%");
-
-                        using (var da = new NpgsqlDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            da.Fill(dt);
-                            dataGridView1.DataSource = dt;
-                        }
-                    }
-                }
-
-                ToggleNoSalesLabel();
-                FormatSalesGrid();
-                CalculateTotal();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Gabim gjatë kërkimit të shitjeve: " + ex.Message);
-            }
-        }
-
         private void ShowTopSoldProducts()
         {
             try
             {
-                using(var connection = Db.GetConnection())
-                {
-                    connection.Open();
-                    string query = @"SELECT
-                                    a.""Emri"" AS ""Produkti"",
-                                    a.""Barkodi"" AS ""Barkodi"",
-                                    k.""Emri"" AS ""Kategoria"",
-                                    SUM(sd.""Sasia"") AS ""SasiaShitur"",
-                                    a.""CmimiShitjes"" AS ""Cmimi"",
-                                    SUM(sd.""Vlera"") AS ""TotaliFituar"",
-                                    a.""SasiaNeStok"" AS ""StokuMbetur""
-                                    FROM ""ShitjetDetale"" sd
-                                    INNER JOIN ""Shitjet"" s
-                                    ON sd.""ShitjaId"" = s.""Id""
-                                    INNER JOIN ""Artikujt"" a
-                                    ON sd.""ArtikulliId"" = a.""Id""
-                                    LEFT JOIN ""kategorite"" k
-                                    ON a.""KategoriaId"" = k.""id""
-                                    WHERE s.""DataShitjes""::date >= @fromDate
-                                    AND s.""DataShitjes""::date <= @toDate
-                                    GROUP BY
-                                    a.""Id"",
-                                    a.""Emri"",
-                                    a.""Barkodi"",
-                                    k.""Emri"",
-                                    a.""CmimiShitjes"",
-                                    a.""SasiaNeStok""
-                                    ORDER BY SUM(sd.""Sasia"") DESC, SUM(sd.""Vlera"") DESC;";
-                    using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                    {
-                        cmd.Parameters.Add("@fromDate", NpgsqlDbType.Date).Value = datePickerFrom.Value.Date;
-                        cmd.Parameters.Add("@toDate", NpgsqlDbType.Date).Value = datePickerTo.Value.Date;
-
-                        using (var da = new NpgsqlDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            da.Fill(dt);
-                            dataGridView2.DataSource = dt;
-                        }
-                    }
-                }
+                var filter = BuildFilter();
+                DataTable dt = _salesReportService.GetTopSoldProducts(filter);
+                dataGridView2.DataSource = dt;
                 FormatGrid();
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 MessageBox.Show("Gabim gjatë ngarkimit të top produkteve: " + ex.Message);
             }

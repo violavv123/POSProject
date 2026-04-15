@@ -17,6 +17,7 @@ namespace POSProject.models
         public decimal SasiaNeStok { get; set; }
         public bool Aktiv { get; set; }
         public decimal MinimumStok { get; set; }
+        public string Kategoria { get; set; }
 
     }
 }

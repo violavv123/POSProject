@@ -9,6 +9,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Npgsql;
+using POSProject.models;
+using POSProject.repositories.notifications;
+using POSProject.repositories.products;
+using POSProject.services.notifications;
+using POSProject.services.products;
 
 namespace POSProject
 {
@@ -17,9 +22,22 @@ namespace POSProject
         private int? selectedArtikulliId = null;
         private bool isDeleteMode = false;
         private AutoCompleteStringCollection productList = new AutoCompleteStringCollection();
+        private readonly INotificationService _notifsService;
+        private readonly ProductService _productService;
+        private readonly ICategoryService _categoryService;
         public FrmProductManagement()
         {
             InitializeComponent();
+
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
+
+            IProductRepository productRepo = new ProductRepository();
+            _productService = new ProductService(productRepo);
+
+            ICategoryRepository categoryRepo = new CategoryRepository();
+            _categoryService = new CategoryService(categoryRepo);
+
             this.Load += FrmProductManagement_Load;
             btnAdd.Click += btnAdd_Click;
             btnEdit.Click += btnEdit_Click;
@@ -57,58 +75,23 @@ namespace POSProject
 
         private void LoadCategories()
         {
+            var categories = _categoryService.GetAll();
+
             comboKategoria.DataSource = null;
             comboKategoria.Items.Clear();
             comboKategoria.DisplayMember = "Emri";
             comboKategoria.ValueMember = "Id";
             comboKategoria.DropDownStyle = ComboBoxStyle.DropDownList;
-
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-
-                string query = @"SELECT ""id"", ""Emri"" FROM ""kategorite"" ORDER BY ""Emri"";";
-
-                using (var cmd = new NpgsqlCommand(query, conn))
-                using (var da = new NpgsqlDataAdapter(cmd))
-                {
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    comboKategoria.DataSource = dt;
-                }
-            }
-
+            comboKategoria.DataSource = categories;
             comboKategoria.SelectedIndex = -1;
         }
 
         private void LoadProducts()
         {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
+            var products = _productService.GetAllForManagement();
 
-                string query = @"
-                    SELECT
-                        a.""Id"",
-                        a.""Barkodi"",
-                        a.""Emri"",
-                        a.""KategoriaId"",
-                        k.""Emri"" AS ""Kategoria"",
-                        a.""CmimiShitjes"",
-                        a.""SasiaNeStok"",
-                        a.""Aktiv""
-                    FROM ""Artikujt"" a
-                    LEFT JOIN ""kategorite"" k ON a.""KategoriaId"" = k.""id""
-                    ORDER BY a.""Emri"";";
-
-                using (var cmd = new NpgsqlCommand(query, conn))
-                using (var da = new NpgsqlDataAdapter(cmd))
-                {
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.DataSource = dt;
-                }
-            }
+            dataGridView1.DataSource = null;
+            dataGridView1.DataSource = products;
 
             if (dataGridView1.Columns["Id"] != null)
                 dataGridView1.Columns["Id"].Visible = false;
@@ -139,19 +122,10 @@ namespace POSProject
         {
             productList.Clear();
 
-            using (var conn = Db.GetConnection())
+            List<string> names = _productService.GetProductNames();
+            foreach (var name in names)
             {
-                conn.Open();
-                string query = @"SELECT ""Emri"" FROM ""Artikujt"" ORDER BY ""Emri"";";
-
-                using (var cmd = new NpgsqlCommand(query, conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        productList.Add(reader["Emri"].ToString());
-                    }
-                }
+                productList.Add(name);
             }
 
             txtBoxName.AutoCompleteCustomSource = productList;
@@ -335,21 +309,7 @@ namespace POSProject
 
         private bool ProductExists(string barcode, string emri)
         {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-                string query = @"SELECT COUNT(*)
-                                FROM ""Artikujt""
-                                WHERE ""Barkodi"" = @Barkodi
-                                OR LOWER(""Emri"") = LOWER(@Emri);";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Barkodi", barcode);
-                    cmd.Parameters.AddWithValue("@Emri", emri);
-                    int count = Convert.ToInt32(cmd.ExecuteScalar());
-                    return count > 0;
-                }
-            }
+            return _productService.ExistsByBarcodeOrName(barcode, emri);
         }
 
         private void btnAdd_Click(object sender, EventArgs e)
@@ -367,30 +327,22 @@ namespace POSProject
                     MessageBox.Show("Ekziston tashmë një produkt me emër ose barkod të njëjtë.");
                     return;
                 }
-                using (var conn = Db.GetConnection())
+
+                var product = new ProductModel
                 {
-                    conn.Open();
+                    Barkodi = barkodi,
+                    Emri = emri,
+                    KategoriaId = Convert.ToInt32(comboKategoria.SelectedValue),
+                    CmimiShitjes = decimal.Parse(txtBoxCmimi.Text),
+                    SasiaNeStok = decimal.Parse(txtBoxSasia.Text),
+                    Aktiv = chckBxAktiv.Checked
+                };
 
-                    string query = @"
-                        INSERT INTO ""Artikujt""
-                        (""Barkodi"", ""Emri"", ""KategoriaId"", ""CmimiShitjes"", ""SasiaNeStok"", ""Aktiv"")
-                        VALUES
-                        (@Barkodi, @Emri, @KategoriaId, @CmimiShitjes, @SasiaNeStok, @Aktiv);";
+                _productService.Add(product);
 
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Barkodi", txtBoxBarcode.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Emri", txtBoxName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@KategoriaId", Convert.ToInt32(comboKategoria.SelectedValue));
-                        cmd.Parameters.AddWithValue("@CmimiShitjes", decimal.Parse(txtBoxCmimi.Text));
-                        cmd.Parameters.AddWithValue("@SasiaNeStok", decimal.Parse(txtBoxSasia.Text));
-                        cmd.Parameters.AddWithValue("@Aktiv", chckBxAktiv.Checked);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
                 AutoClosingMessageBox.Show("Produkti u ruajt me sukses.", "Informacion", 900);
-                NotificationService.Create("PRODUCT_CREATED", "Info", "Produkt i ri", txtBoxName.Text, "Artikujt", null, Session.UserId);
+                _notifsService.Create("PRODUCT_CREATED", "Info", "Produkt i ri", txtBoxName.Text, "Artikujt", null, Session.UserId);
+
                 LoadProducts();
                 LoadProductAutoComplete();
                 ClearFields();
@@ -414,37 +366,22 @@ namespace POSProject
 
             try
             {
-                using (var conn = Db.GetConnection())
+                var product = new ProductModel
                 {
-                    conn.Open();
+                    Id = selectedArtikulliId.Value,
+                    Barkodi = txtBoxBarcode.Text.Trim(),
+                    Emri = txtBoxName.Text.Trim(),
+                    KategoriaId = Convert.ToInt32(comboKategoria.SelectedValue),
+                    CmimiShitjes = decimal.Parse(txtBoxCmimi.Text),
+                    SasiaNeStok = decimal.Parse(txtBoxSasia.Text),
+                    Aktiv = chckBxAktiv.Checked
+                };
 
-                    string query = @"
-                        UPDATE ""Artikujt""
-                        SET
-                            ""Barkodi"" = @Barkodi,
-                            ""Emri"" = @Emri,
-                            ""KategoriaId"" = @KategoriaId,
-                            ""CmimiShitjes"" = @CmimiShitjes,
-                            ""SasiaNeStok"" = @SasiaNeStok,
-                            ""Aktiv"" = @Aktiv
-                        WHERE ""Id"" = @Id;";
-
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", selectedArtikulliId.Value);
-                        cmd.Parameters.AddWithValue("@Barkodi", txtBoxBarcode.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Emri", txtBoxName.Text.Trim());
-                        cmd.Parameters.AddWithValue("@KategoriaId", Convert.ToInt32(comboKategoria.SelectedValue));
-                        cmd.Parameters.AddWithValue("@CmimiShitjes", decimal.Parse(txtBoxCmimi.Text));
-                        cmd.Parameters.AddWithValue("@SasiaNeStok", decimal.Parse(txtBoxSasia.Text));
-                        cmd.Parameters.AddWithValue("@Aktiv", chckBxAktiv.Checked);
-
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                _productService.Update(product);
 
                 AutoClosingMessageBox.Show("Produkti u përditësua me sukses.", "Informacion", 900);
-                NotificationService.Create("PRODUCT_UPDATED", "Info", "Produkt i përditësuar", txtBoxName.Text, "Artikujt", selectedArtikulliId, Session.UserId);
+                _notifsService.Create("PRODUCT_UPDATED", "Info", "Produkt i përditësuar", txtBoxName.Text, "Artikujt", selectedArtikulliId, Session.UserId);
+
                 LoadProducts();
                 LoadProductAutoComplete();
                 ClearFields();
@@ -489,19 +426,14 @@ namespace POSProject
 
             try
             {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-                    string query = @"DELETE FROM ""Artikujt"" WHERE ""Id"" = @Id;";
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", selectedArtikulliId.Value);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                int idToDelete = selectedArtikulliId.Value;
+                string deletedName = txtBoxName.Text;
+
+                _productService.Delete(idToDelete);
 
                 AutoClosingMessageBox.Show("Produkti u fshi me sukses.", "Informacion", 900);
-                NotificationService.Create("PRODUCT_DELETED", "Warning", "Produkt i fshirë", txtBoxName.Text, "Artikujt", selectedArtikulliId, Session.UserId);
+                _notifsService.Create("PRODUCT_DELETED", "Warning", "Produkt i fshirë", deletedName, "Artikujt", idToDelete, Session.UserId);
+
                 LoadProducts();
                 LoadProductAutoComplete();
                 ClearFields();
@@ -560,5 +492,6 @@ namespace POSProject
             }
         }
 
+        
     }
 }

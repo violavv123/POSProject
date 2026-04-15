@@ -95,6 +95,11 @@ namespace POSProject.services
 
             Session.Start(user.Id, user.Username, user.Role);
         }
+
+        public List<string> GetCashierUsernames()
+        {
+            return _userRepo.GetCashierUsernames();
+        }
     }
 }
 

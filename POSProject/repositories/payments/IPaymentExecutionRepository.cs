@@ -9,6 +9,6 @@ namespace POSProject.repositories.payments
 {
     public interface IPaymentExecutionRepository
     {
-        void InsertPaymentExecution(PaymentExecutionModel payment, NpgsqlConnection conn, NpgsqlTransaction tx);
+        int InsertPaymentExecution(PaymentExecutionModel payment, NpgsqlConnection conn, NpgsqlTransaction tx);
     }
 }

@@ -9,6 +9,8 @@ using POSProject.services.returns;
 using POSProject.services.products;
 using POSProject.repositories.products;
 using POSProject.models;
+using POSProject.repositories.notifications;
+using POSProject.services.notifications;
 
 namespace POSProject
 {
@@ -23,12 +25,16 @@ namespace POSProject
         private decimal totaliFinal = 0m;
 
         private readonly ProductService _productService;
+        private readonly INotificationService _notifsService;
+        
         public FrmPOS()
         {
             InitializeComponent();
 
             IProductRepository productRepo = new ProductRepository();
             _productService = new ProductService(productRepo);
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
 
             this.KeyPreview = true;
             txtBoxBarkodi.KeyDown += txtBoxBarkodi_KeyDown;
@@ -267,7 +273,7 @@ namespace POSProject
                 if (product == null)
                 {
                     AutoClosingMessageBox.Show("Produkti nuk u gjet.", "Informacion", 900);
-                    NotificationService.Create("PRODUCT_NOT_FOUND", "Warning", "Produkti nuk u gjet.", $"Barcode:{txtBoxBarkodi.Text}", "Artikujt", null, Session.UserId);
+                    _notifsService.Create("PRODUCT_NOT_FOUND", "Warning", "Produkti nuk u gjet.", $"Barcode:{txtBoxBarkodi.Text}", "Artikujt", null, Session.UserId);
                     txtBoxBarkodi.Focus();
                     return;
                 }
@@ -282,7 +288,7 @@ namespace POSProject
                 if (!_productService.HasEnoughStock(artikulliId, sasiaKerkuar, sasiaNeFature))
                 {
                     AutoClosingMessageBox.Show($"Nuk ka stok te mjaftueshem per produktin '{emri}'. Ne stok: {sasiaNeStok}, ne fature: {sasiaNeFature}, u kerkuar edhe: {sasiaKerkuar}.", "Informacion", 900);
-                    NotificationService.Create("LOW_STOCK", "Warning", "Stok i pamjaftueshëm.", $"Produkti{emri} - stok:{sasiaNeStok}", "Artikujt", artikulliId, Session.UserId);
+                    _notifsService.Create("LOW_STOCK", "Warning", "Stok i pamjaftueshëm.", $"Produkti{emri} - stok:{sasiaNeStok}", "Artikujt", artikulliId, Session.UserId);
                     txtBoxBarkodi.Focus();
                     return;
                 }
@@ -432,7 +438,7 @@ namespace POSProject
                 if (cartTable == null || cartTable.Rows.Count == 0)
                 {
                     AutoClosingMessageBox.Show("Nuk ka produkte në shitje.", "Informacion", 900);
-                    NotificationService.Create("EMPTY_CART", "Warning", "Tentim shitje pa produkte", "U tentua të bëhet pagesë pa artikuj.", "Shitjet", null, Session.UserId);
+                    _notifsService.Create("EMPTY_CART", "Warning", "Tentim shitje pa produkte", "U tentua të bëhet pagesë pa artikuj.", "Shitjet", null, Session.UserId);
                     return;
                 }
 
@@ -518,7 +524,7 @@ namespace POSProject
                 cmimiFinal = 0;
             row.Cells["CmimiFinal"].Value = cmimiFinal;
             row.Cells["Vlera"].Value = sasia * cmimiFinal;
-            NotificationService.Create("PRICE_CHANGE", "Info", "Çmimi u ndryshua.", $"Produkti: {emri} nga {cmimiAktual} në {cmimiRi}", "Artikujt", artikulliId, Session.UserId);
+            _notifsService.Create("PRICE_CHANGE", "Info", "Çmimi u ndryshua.", $"Produkti: {emri} nga {cmimiAktual} në {cmimiRi}", "Artikujt", artikulliId, Session.UserId);
             CalculateTotal();
             CalculateChange();
             BeginInvoke(new Action(() =>
@@ -686,17 +692,15 @@ namespace POSProject
 
         private void UpdateNotificationBadge()
         {
-            int count = NotificationService.GetUnreadNotificationsCount();
+            int count = _notifsService.GetUnreadCount(30);
+
             btnNotifications.BackColor = count > 0 ? Color.LightCoral : Color.LightGray;
             btnNotifications.Font = new Font("Segoe UI Emoji", 10, FontStyle.Bold);
+
             if (count > 0)
-            {
                 btnNotifications.Text = $"\U0001F514 ({count})";
-            }
             else
-            {
                 btnNotifications.Text = "\U0001F514";
-            }
         }
 
         private void btnNotifications_Click(object sender, EventArgs e)
@@ -792,7 +796,7 @@ namespace POSProject
             row.Cells["CmimiFinal"].Value = cmimiFinal;
             row.Cells["Vlera"].Value = vlera;
 
-            NotificationService.Create("DISCOUNT_ITEM", "Info", "U aplikua zbritje në artikull.", $"Produkti: {emri}, Zbritja: {zbritjaRe:0.00} €/copë", "Artikujt", artikulliId, Session.UserId);
+            _notifsService.Create("DISCOUNT_ITEM", "Info", "U aplikua zbritje në artikull.", $"Produkti: {emri}, Zbritja: {zbritjaRe:0.00} €/copë", "Artikujt", artikulliId, Session.UserId);
             CalculateTotal();
             BeginInvoke(new Action(() =>
             {
@@ -838,7 +842,7 @@ namespace POSProject
             invoiceDiscountAmount = discount;
             CalculateTotal();
 
-            NotificationService.Create("DISCOUNT_INVOICE", "Info", "U aplikua zbritje në faturë", $"Zbritja totale e faturës: {invoiceDiscountAmount:0.00} €", "Shitjet", null, Session.UserId);
+            _notifsService.Create("DISCOUNT_INVOICE", "Info", "U aplikua zbritje në faturë", $"Zbritja totale e faturës: {invoiceDiscountAmount:0.00} €", "Shitjet", null, Session.UserId);
 
             BeginInvoke(new Action(() =>
             {

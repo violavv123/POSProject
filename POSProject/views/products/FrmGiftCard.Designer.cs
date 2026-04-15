@@ -47,13 +47,14 @@
             txtBoxShitjaId = new TextBox();
             labelShitjaId = new Label();
             labelTitle = new Label();
+            btnUseCard = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             SuspendLayout();
             // 
             // labelKodi
             // 
             labelKodi.AutoSize = true;
-            labelKodi.Location = new Point(50, 140);
+            labelKodi.Location = new Point(50, 120);
             labelKodi.Name = "labelKodi";
             labelKodi.Size = new Size(47, 19);
             labelKodi.TabIndex = 0;
@@ -61,7 +62,7 @@
             // 
             // txtBoxKodi
             // 
-            txtBoxKodi.Location = new Point(205, 137);
+            txtBoxKodi.Location = new Point(205, 117);
             txtBoxKodi.Name = "txtBoxKodi";
             txtBoxKodi.Size = new Size(195, 25);
             txtBoxKodi.TabIndex = 1;
@@ -69,7 +70,7 @@
             // labelBarkodi
             // 
             labelBarkodi.AutoSize = true;
-            labelBarkodi.Location = new Point(50, 187);
+            labelBarkodi.Location = new Point(50, 167);
             labelBarkodi.Name = "labelBarkodi";
             labelBarkodi.Size = new Size(72, 19);
             labelBarkodi.TabIndex = 2;
@@ -77,14 +78,14 @@
             // 
             // txtBoxBarkodi
             // 
-            txtBoxBarkodi.Location = new Point(205, 184);
+            txtBoxBarkodi.Location = new Point(205, 164);
             txtBoxBarkodi.Name = "txtBoxBarkodi";
             txtBoxBarkodi.Size = new Size(195, 25);
             txtBoxBarkodi.TabIndex = 3;
             // 
             // txtBoxShumaFillestare
             // 
-            txtBoxShumaFillestare.Location = new Point(205, 233);
+            txtBoxShumaFillestare.Location = new Point(205, 213);
             txtBoxShumaFillestare.Name = "txtBoxShumaFillestare";
             txtBoxShumaFillestare.Size = new Size(195, 25);
             txtBoxShumaFillestare.TabIndex = 4;
@@ -92,7 +93,7 @@
             // labelShumaFillestare
             // 
             labelShumaFillestare.AutoSize = true;
-            labelShumaFillestare.Location = new Point(50, 233);
+            labelShumaFillestare.Location = new Point(50, 213);
             labelShumaFillestare.Name = "labelShumaFillestare";
             labelShumaFillestare.Size = new Size(140, 19);
             labelShumaFillestare.TabIndex = 5;
@@ -101,7 +102,7 @@
             // labelBilanciAktual
             // 
             labelBilanciAktual.AutoSize = true;
-            labelBilanciAktual.Location = new Point(50, 278);
+            labelBilanciAktual.Location = new Point(50, 258);
             labelBilanciAktual.Name = "labelBilanciAktual";
             labelBilanciAktual.Size = new Size(121, 19);
             labelBilanciAktual.TabIndex = 6;
@@ -109,7 +110,7 @@
             // 
             // txtBoxBilanciAktual
             // 
-            txtBoxBilanciAktual.Location = new Point(205, 282);
+            txtBoxBilanciAktual.Location = new Point(205, 262);
             txtBoxBilanciAktual.Name = "txtBoxBilanciAktual";
             txtBoxBilanciAktual.Size = new Size(195, 25);
             txtBoxBilanciAktual.TabIndex = 7;
@@ -117,16 +118,16 @@
             // dataGridView1
             // 
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new Point(12, 492);
+            dataGridView1.Location = new Point(38, 472);
             dataGridView1.Name = "dataGridView1";
             dataGridView1.RowHeadersWidth = 51;
-            dataGridView1.Size = new Size(908, 188);
+            dataGridView1.Size = new Size(861, 188);
             dataGridView1.TabIndex = 16;
             // 
             // btnSearch
             // 
             btnSearch.BackColor = Color.Lavender;
-            btnSearch.Location = new Point(805, 442);
+            btnSearch.Location = new Point(805, 422);
             btnSearch.Name = "btnSearch";
             btnSearch.Size = new Size(94, 29);
             btnSearch.TabIndex = 17;
@@ -148,7 +149,7 @@
             // btnClear
             // 
             btnClear.BackColor = Color.LemonChiffon;
-            btnClear.Location = new Point(692, 442);
+            btnClear.Location = new Point(692, 422);
             btnClear.Name = "btnClear";
             btnClear.Size = new Size(94, 29);
             btnClear.TabIndex = 21;
@@ -157,7 +158,7 @@
             // 
             // txtBoxCreatedAt
             // 
-            txtBoxCreatedAt.Location = new Point(205, 349);
+            txtBoxCreatedAt.Location = new Point(205, 329);
             txtBoxCreatedAt.Name = "txtBoxCreatedAt";
             txtBoxCreatedAt.Size = new Size(195, 25);
             txtBoxCreatedAt.TabIndex = 23;
@@ -165,7 +166,7 @@
             // labelCreatedAt
             // 
             labelCreatedAt.AutoSize = true;
-            labelCreatedAt.Location = new Point(50, 345);
+            labelCreatedAt.Location = new Point(50, 325);
             labelCreatedAt.Name = "labelCreatedAt";
             labelCreatedAt.Size = new Size(96, 19);
             labelCreatedAt.TabIndex = 22;
@@ -173,7 +174,7 @@
             // 
             // txtBoxCreatedBy
             // 
-            txtBoxCreatedBy.Location = new Point(205, 393);
+            txtBoxCreatedBy.Location = new Point(205, 373);
             txtBoxCreatedBy.Name = "txtBoxCreatedBy";
             txtBoxCreatedBy.Size = new Size(195, 25);
             txtBoxCreatedBy.TabIndex = 25;
@@ -181,7 +182,7 @@
             // labelCreatedBy
             // 
             labelCreatedBy.AutoSize = true;
-            labelCreatedBy.Location = new Point(50, 389);
+            labelCreatedBy.Location = new Point(50, 369);
             labelCreatedBy.Name = "labelCreatedBy";
             labelCreatedBy.Size = new Size(100, 19);
             labelCreatedBy.TabIndex = 24;
@@ -189,7 +190,7 @@
             // 
             // txtBoxShitjaId
             // 
-            txtBoxShitjaId.Location = new Point(205, 442);
+            txtBoxShitjaId.Location = new Point(205, 422);
             txtBoxShitjaId.Name = "txtBoxShitjaId";
             txtBoxShitjaId.Size = new Size(195, 25);
             txtBoxShitjaId.TabIndex = 27;
@@ -197,7 +198,7 @@
             // labelShitjaId
             // 
             labelShitjaId.AutoSize = true;
-            labelShitjaId.Location = new Point(50, 438);
+            labelShitjaId.Location = new Point(50, 418);
             labelShitjaId.Name = "labelShitjaId";
             labelShitjaId.Size = new Size(81, 19);
             labelShitjaId.TabIndex = 26;
@@ -213,12 +214,23 @@
             labelTitle.TabIndex = 28;
             labelTitle.Text = "Gift Cards";
             // 
+            // btnUseCard
+            // 
+            btnUseCard.BackColor = Color.PaleGreen;
+            btnUseCard.Location = new Point(772, 683);
+            btnUseCard.Name = "btnUseCard";
+            btnUseCard.Size = new Size(127, 60);
+            btnUseCard.TabIndex = 29;
+            btnUseCard.Text = "Përdor kartelën";
+            btnUseCard.UseVisualStyleBackColor = false;
+            // 
             // FrmGiftCard
             // 
             AutoScaleDimensions = new SizeF(9F, 19F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ScrollBar;
-            ClientSize = new Size(932, 748);
+            ClientSize = new Size(932, 770);
+            Controls.Add(btnUseCard);
             Controls.Add(labelTitle);
             Controls.Add(txtBoxShitjaId);
             Controls.Add(labelShitjaId);
@@ -267,5 +279,6 @@
         private TextBox txtBoxShitjaId;
         private Label labelShitjaId;
         private Label labelTitle;
+        private Button btnUseCard;
     }
 }

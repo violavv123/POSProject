@@ -9,9 +9,10 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using POSProject.repositories.payments;
+using POSProject.repositories.products;
 using POSProject.services;
 using POSProject.services.products;
-using POSProject.repositories.products;
+using POSProject.views.products;
 
 namespace POSProject
 {
@@ -284,9 +285,30 @@ namespace POSProject
             if (!isCash && kerkonReference)
             {
                 if (isGiftCard)
+                {
                     txtBoxNrReference.Clear();
+
+                    using (var frmGiftCard = new POSProject.views.products.FrmGiftCard(true))
+                    {
+                        if (frmGiftCard.ShowDialog() == DialogResult.OK && frmGiftCard.CardSelected)
+                        {
+                            txtBoxNrReference.Text = frmGiftCard.SelectedGiftCardCode;
+
+                            var card = _giftCardService.GetByCode(frmGiftCard.SelectedGiftCardCode);
+                            if (card != null)
+                            {
+                                _giftCardBalance1 = card.BilanciAktual;
+                                decimal amountToUse = Math.Min(_totali, _giftCardBalance1);
+                                txtBoxPaguar.Text = amountToUse.ToString("0.00");
+                            }
+                        }
+                    }
+                    UpdateCashFieldsVisibility();
+                }
                 else
+                {
                     txtBoxNrReference.Text = $"RF-{DateTime.Now:yyyyMMddHHmmss}";
+                }
             }
             else
             {
@@ -1006,14 +1028,40 @@ namespace POSProject
             valutaDefault2 = drv["ValutaDefault"]?.ToString() ?? "EUR";
             kerkonReference2 = drv["KerkonReference"] != DBNull.Value ? Convert.ToBoolean(drv["KerkonReference"]) : false;
             bool isCash2 = tipiPageses2.Trim().Equals("CASH", StringComparison.OrdinalIgnoreCase);
+            bool isGiftCard2 = tipiPageses2.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
             bool showReference2 = !isCash2 && kerkonReference2;
+
             labelNrReference2.Visible = showReference2;
             txtBoxNrReference2.Visible = showReference2;
             txtBoxShuma2Tjeter.Visible = !showReference2;
             labelaShuma2Tjeter.Visible = !showReference2;
-            if (showReference2 && string.IsNullOrWhiteSpace(txtBoxNrReference2.Text))
-                txtBoxNrReference2.Text = $"RF-{DateTime.Now:yyyyMMddHHmmss}";
-            if (!showReference2) 
+
+            if (showReference2)
+            {
+                if (isGiftCard2)
+                {
+                    txtBoxNrReference2.Clear();
+
+                    using (var frmGiftCard = new FrmGiftCard(true))
+                    {
+                        if (frmGiftCard.ShowDialog() == DialogResult.OK && frmGiftCard.CardSelected)
+                        {
+                            txtBoxNrReference2.Text = frmGiftCard.SelectedGiftCardCode;
+
+                            var card = _giftCardService.GetByCode(frmGiftCard.SelectedGiftCardCode);
+                            if (card != null)
+                            {
+                                _giftCardBalance2 = card.BilanciAktual;
+                            }
+                        }
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(txtBoxNrReference2.Text))
+                {
+                    txtBoxNrReference2.Text = $"RF-{DateTime.Now:yyyyMMddHHmmss}";
+                }
+            }
+            else
             {
                 txtBoxNrReference2.Clear();
             }

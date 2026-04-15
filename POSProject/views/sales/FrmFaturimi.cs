@@ -434,6 +434,7 @@ namespace POSProject
                 var payments = paymentInfoList.Select(x => new PaymentExecutionModel
                 {
                     MenyraPagesesId = x.MenyraPagesesId,
+                    Tipi = x.Tipi,
                     ShumaPaguar = x.ShumaPaguar,
                     PaguarMe = x.PaguarMe,
                     CashBack = x.CashBack,

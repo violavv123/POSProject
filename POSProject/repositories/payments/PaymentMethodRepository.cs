@@ -125,8 +125,7 @@ namespace POSProject.repositories.payments
             conn.Open();
             string query = @"INSERT INTO ""MenyratPageses""(""Pershkrimi"", ""Shkurtesa"", ""Tipi"", ""ValutaDefault"", ""KerkonReference"", ""Aktiv"", ""Created_At"",
                              ""Updated_At"", ""Rendorja"")
-                             VALUES
-                             (@Pershkrimi, @Shkurtesa, @Tipi, @ValutaDefault, @KerkonReference, TRUE, CURRENT_TIMESTAMP, NULL ,@Rendorja);";
+                             VALUES(@Pershkrimi, @Shkurtesa, @Tipi, @ValutaDefault, @KerkonReference, TRUE, CURRENT_TIMESTAMP, NULL ,@Rendorja);";
             using var cmd = new NpgsqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@Pershkrimi", method.Pershkrimi);
             cmd.Parameters.AddWithValue("@Shkurtesa", method.Shkurtesa);

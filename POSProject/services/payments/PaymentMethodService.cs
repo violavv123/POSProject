@@ -5,17 +5,22 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using POSProject.models;
+using POSProject.repositories.notifications;
 using POSProject.repositories.payments;
+using POSProject.services.notifications;
 
 namespace POSProject.services.payments
 {
     public class PaymentMethodService : IPaymentMethodService
     {
         private readonly IPaymentMethodRepository _methodRepo;
+        private readonly INotificationService _notifsService;
 
         public PaymentMethodService(IPaymentMethodRepository methodRepo)
         {
             _methodRepo = methodRepo;
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
         }
 
         public DataTable GetMethods() => _methodRepo.GetAll();
@@ -30,7 +35,7 @@ namespace POSProject.services.payments
 
             _methodRepo.Insert(method);
 
-            NotificationService.Create(
+            _notifsService.Create(
                 "PAYMENT_METHOD_ADDED",
                 "Info",
                 "Mënyrë pagese e re",
@@ -54,7 +59,7 @@ namespace POSProject.services.payments
 
             _methodRepo.Update(method);
 
-            NotificationService.Create(
+            _notifsService.Create(
                 "PAYMENT_METHOD_UPDATED",
                 "Info",
                 "Mënyrë pagese e përditësuar",
@@ -74,7 +79,7 @@ namespace POSProject.services.payments
 
             _methodRepo.Deactivate(id);
 
-            NotificationService.Create(
+            _notifsService.Create(
                 "PAYMENT_METHOD_DEACTIVATED",
                 "Info",
                 "Mënyrë pagese e ç'aktivizuar",

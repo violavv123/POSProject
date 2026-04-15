@@ -18,5 +18,7 @@ namespace POSProject.services.products
         int CreateGiftCard(GiftCardModel model);
         List<GiftCardTransactionModel> GetTransactionsByCode(string kodi);
         GiftCardModel IssueGiftCardFromSale(decimal shuma, int shitjaId, int userId);
+        List<GiftCardModel> GetAll(bool onlyAvailable = false);
+        void UseGiftCard(string code, decimal amount, int shitjaId, int ekzekutimiPagesesId, int userId, NpgsqlConnection conn, NpgsqlTransaction tx);
     }
 }

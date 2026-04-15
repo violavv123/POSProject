@@ -13,5 +13,6 @@ namespace POSProject.repositories.auth
         void UpdateLastLogin(int userId);
         bool UsernameExists(string username);
         int CreateUser(UserModel user);
+        List<string> GetCashierUsernames();
     }
 }

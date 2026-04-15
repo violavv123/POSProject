@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace POSProject.services.subjects
 {
-    public class ILoyaltyAccountsService
+    public interface ILoyaltyAccountsService
     {
     }
 }

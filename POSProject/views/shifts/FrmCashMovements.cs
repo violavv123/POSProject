@@ -127,7 +127,5 @@ namespace POSProject
                 MessageBox.Show("Gabim gjatë ruajtjes: " + ex.Message);
             }
         }
-
-       
     }
 }

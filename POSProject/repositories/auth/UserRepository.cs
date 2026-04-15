@@ -73,5 +73,31 @@ namespace POSProject.repositories.auth
             cmd.Parameters.AddWithValue("@isActive", user.isActive);
             return Convert.ToInt32(cmd.ExecuteScalar());
         }
+
+        public List<string> GetCashierUsernames()
+        {
+            List<string> cashiers = new List<string>();
+
+            using (var connection = Db.GetConnection())
+            {
+                connection.Open();
+
+                string query = @"SELECT ""username""
+                                 FROM ""perdoruesit""
+                                 WHERE ""role"" = 'cashier'
+                                 ORDER BY ""username"";";
+
+                using (var cmd = new NpgsqlCommand(query, connection))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cashiers.Add(reader["username"].ToString());
+                    }
+                }
+            }
+
+            return cashiers;
+        }
     }
 }

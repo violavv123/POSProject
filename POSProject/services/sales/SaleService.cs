@@ -27,70 +27,61 @@ namespace POSProject.services.sales
             _giftCardService = new GiftCardService(new GiftCardRepository());
         }
 
-        public int SaveSale(SaleModel sale, List<SaleDetailModel> detale, List<PaymentExecutionModel> payments)
+        public int SaveSale(SaleModel shitja, List<SaleDetailModel> detale, List<PaymentExecutionModel> payments)
         {
-            using var connection = Db.GetConnection();
-            connection.Open();
-
-            using var transaction = connection.BeginTransaction();
-            try
+            using (var conn = Db.GetConnection())
             {
-                int newShitjaId = _saleRepo.InsertSale(sale, connection, transaction);
+                conn.Open();
 
-                foreach (var item in detale)
+                using (var tx = conn.BeginTransaction())
                 {
-                    decimal sasiaNeStokAktuale = _productRepo.GetStockById(
-                        item.ArtikulliId
-                        );
-
-                    if (sasiaNeStokAktuale <= 0)
+                    try
                     {
-                        throw new Exception($"Produkti me Id: {item.ArtikulliId} nuk u gjet në databazë.");
-                    }
+                        int shitjaId = _saleRepo.InsertSale(shitja, conn, tx);
 
-                    if (item.Sasia > sasiaNeStokAktuale)
+                        foreach (var det in detale)
+                        {
+                            det.ShitjaId = shitjaId;
+                            _saleRepo.InsertSaleDetail(det, conn, tx);
+
+                            _productRepo.UpdateStock(det.ArtikulliId, det.Sasia, conn, tx);
+                        }
+
+                        foreach (var payment in payments)
+                        {
+                            payment.ShitjaId = shitjaId;
+
+                            int ekzekutimiPagesesId = _paymentRepo.InsertPaymentExecution(payment, conn, tx);
+
+                            if (!string.IsNullOrWhiteSpace(payment.Tipi) &&
+                                payment.Tipi.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase))
+                            {
+                                if (string.IsNullOrWhiteSpace(payment.ReferenceNr))
+                                    throw new Exception("Gift card payment nuk ka kod reference.");
+
+                                decimal amountToDeduct = payment.ShumaPaguar;
+
+                                _giftCardService.UseGiftCard(
+                                    payment.ReferenceNr.Trim(),
+                                    amountToDeduct,
+                                    shitjaId,
+                                    ekzekutimiPagesesId,
+                                    payment.PerdoruesiId,
+                                    conn,
+                                    tx
+                                );
+                            }
+                        }
+
+                        tx.Commit();
+                        return shitjaId;
+                    }
+                    catch
                     {
-                        throw new Exception(
-                            $"Nuk ka stok të mjaftueshëm për produktin me Id: {item.ArtikulliId}. " +
-                            $"Në stok: {sasiaNeStokAktuale}, kërkohet: {item.Sasia}");
+                        tx.Rollback();
+                        throw;
                     }
-
-                    item.ShitjaId = newShitjaId;
-                    _saleRepo.InsertSaleDetail(item, connection, transaction);
-                    _productRepo.UpdateStock(item.ArtikulliId, item.Sasia, connection, transaction);
                 }
-
-                foreach (var payment in payments)
-                {
-                    payment.ShitjaId = newShitjaId;
-                    _paymentRepo.InsertPaymentExecution(payment, connection, transaction);
-                    bool isGiftCard = !string.IsNullOrWhiteSpace(payment.Tipi) &&
-                      payment.Tipi.Trim().Equals("GIFTCARD", StringComparison.OrdinalIgnoreCase);
-
-                    if (isGiftCard)
-                    {
-                        if (string.IsNullOrWhiteSpace(payment.ReferenceNr))
-                            throw new Exception("Kodi i gift card mungon gjatë ruajtjes.");
-
-                        _giftCardService.RedeemGiftCard(
-                            payment.ReferenceNr.Trim(),
-                            payment.ShumaPaguar,
-                            newShitjaId,
-                            payment.Id,
-                            payment.PerdoruesiId,
-                            connection,
-                            transaction
-                        );
-                    }
-                }
-
-                transaction.Commit();
-                return newShitjaId;
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
             }
         }
     }

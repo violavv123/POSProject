@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+﻿using System.Data;
 using Npgsql;
+using POSProject.models;
+using POSProject.repositories.notifications;
+using POSProject.repositories.subjects;
+using POSProject.services.notifications;
+using POSProject.services.subjects;
 
 namespace POSProject
 {
@@ -16,9 +13,15 @@ namespace POSProject
         private int? selectedSubjektiId = null;
         private AutoCompleteStringCollection subjectList = new AutoCompleteStringCollection();
         private bool isDeleteMode = false;
+        private readonly INotificationService _notifsService;
+        private readonly SubjectService _subjectService;
         public FrmSubjektet()
         {
             InitializeComponent();
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
+            ISubjectRepository subjectRepo = new SubjectRepository();
+            _subjectService = new SubjectService(subjectRepo);
             LoadSubjectAutoComplete();
             this.Load += FrmSubjektet_Load;
             btnSave.Click += btnSave_Click;
@@ -64,20 +67,9 @@ namespace POSProject
 
         private void LoadSubjects()
         {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-                string query = @"SELECT ""Id"",""Pershkrimi"",""NumriFiskal"",""Adresa"",""LlojiSubjektit""
-                               FROM ""Subjektet""
-                               ORDER BY ""Pershkrimi""";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                using (var da = new NpgsqlDataAdapter(cmd))
-                {
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.DataSource = dt;
-                }
-            }
+            DataTable dt = _subjectService.GetAllSubjects();
+            dataGridView1.DataSource = dt;
+
             if (dataGridView1.Columns["Id"] != null)
                 dataGridView1.Columns["Id"].Visible = false;
             if (dataGridView1.Columns["Pershkrimi"] != null)
@@ -182,34 +174,22 @@ namespace POSProject
         {
             if (!ValidateSubject())
                 return;
+
             try
             {
-                using (var conn = Db.GetConnection())
+                var subject = new SubjectModel
                 {
-                    conn.Open();
-                    string query = @"INSERT INTO ""Subjektet"" (""Pershkrimi"",""NumriFiskal"",""Adresa"",""LlojiSubjektit"") VALUES
-                                   (@Pershkrimi, @NumriFiskal, @Adresa, @LlojiSubjektit);";
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Pershkrimi", txtBoxPershkrimi.Text.Trim());
-                        if (string.IsNullOrWhiteSpace(txtBoxNrFiskal.Text))
-                            cmd.Parameters.AddWithValue("@NumriFiskal", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@NumriFiskal", txtBoxNrFiskal.Text.Trim());
-                        if (string.IsNullOrWhiteSpace(txtBoxAdresa.Text))
-                            cmd.Parameters.AddWithValue("@Adresa", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@Adresa", txtBoxAdresa.Text.Trim());
-                        if (comboBox1.SelectedIndex == -1)
-                            cmd.Parameters.AddWithValue("@LlojiSubjektit", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@LlojiSubjektit", comboBox1.SelectedItem.ToString());
+                    Pershkrimi = txtBoxPershkrimi.Text.Trim(),
+                    NumriFiskal = string.IsNullOrWhiteSpace(txtBoxNrFiskal.Text) ? null : txtBoxNrFiskal.Text.Trim(),
+                    Adresa = string.IsNullOrWhiteSpace(txtBoxAdresa.Text) ? null : txtBoxAdresa.Text.Trim(),
+                    LlojiSubjektit = comboBox1.SelectedIndex == -1 ? null : comboBox1.SelectedItem.ToString()
+                };
 
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                _subjectService.CreateSubject(subject);
+
                 AutoClosingMessageBox.Show("Subjekti u ruajt me sukses.", "Informacion", 900);
-                NotificationService.Create("SUBJECT_CREATED", "Info", "Subjekt i ri", txtBoxPershkrimi.Text, "Subjektet", null , Session.UserId);
+                _notifsService.Create("SUBJECT_CREATED", "Info", "Subjekt i ri", txtBoxPershkrimi.Text, "Subjektet", null, Session.UserId);
+
                 LoadSubjects();
                 LoadSubjectAutoComplete();
                 ClearFields();
@@ -227,47 +207,29 @@ namespace POSProject
                 MessageBox.Show("Zgjedh një subjekt nga lista");
                 return;
             }
+
             if (!ValidateSubject())
                 return;
+
             try
             {
-                using (var conn = Db.GetConnection())
+                var subject = new SubjectModel
                 {
-                    conn.Open();
-                    string query = @"UPDATE ""Subjektet"" 
-                                   SET
-                                   ""Pershkrimi"" = @Pershkrimi,
-                                   ""NumriFiskal"" = @NumriFiskal,
-                                   ""Adresa"" = @Adresa,
-                                   ""LlojiSubjektit"" = @LlojiSubjektit
-                                   WHERE ""Id"" = @Id;";
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", selectedSubjektiId.Value);
-                        cmd.Parameters.AddWithValue("@Pershkrimi", txtBoxPershkrimi.Text.Trim());
-                        if (string.IsNullOrWhiteSpace(txtBoxNrFiskal.Text))
-                            cmd.Parameters.AddWithValue("@NumriFiskal", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@NumriFiskal", txtBoxNrFiskal.Text.Trim());
-                        if (string.IsNullOrWhiteSpace(txtBoxAdresa.Text))
-                            cmd.Parameters.AddWithValue("@Adresa", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@Adresa", txtBoxAdresa.Text.Trim());
-                        if (comboBox1.SelectedIndex == -1)
-                            cmd.Parameters.AddWithValue("@LlojiSubjektit", DBNull.Value);
-                        else
-                            cmd.Parameters.AddWithValue("@LlojiSubjektit", comboBox1.SelectedItem.ToString());
+                    Id = selectedSubjektiId.Value,
+                    Pershkrimi = txtBoxPershkrimi.Text.Trim(),
+                    NumriFiskal = string.IsNullOrWhiteSpace(txtBoxNrFiskal.Text) ? null : txtBoxNrFiskal.Text.Trim(),
+                    Adresa = string.IsNullOrWhiteSpace(txtBoxAdresa.Text) ? null : txtBoxAdresa.Text.Trim(),
+                    LlojiSubjektit = comboBox1.SelectedIndex == -1 ? null : comboBox1.SelectedItem.ToString()
+                };
 
-                        cmd.ExecuteNonQuery();
+                _subjectService.UpdateSubject(subject);
 
-                    }
-                }
                 AutoClosingMessageBox.Show("Subjekti u përditësua me sukses.", "Informacion", 900);
-                NotificationService.Create("SUBJECT_UPDATED", "Info", "Subjekt i përditësuar", txtBoxPershkrimi.Text, "Subjektet", selectedSubjektiId.Value, Session.UserId);
+                _notifsService.Create("SUBJECT_UPDATED", "Info", "Subjekt i përditësuar", txtBoxPershkrimi.Text, "Subjektet", selectedSubjektiId.Value, Session.UserId);
+
                 LoadSubjects();
                 LoadSubjectAutoComplete();
                 ClearFields();
-
             }
             catch (Exception ex)
             {
@@ -309,19 +271,11 @@ namespace POSProject
 
             try
             {
-                using (var conn = Db.GetConnection())
-                {
-                    conn.Open();
-                    string query = @"DELETE FROM ""Subjektet"" WHERE ""Id"" = @Id;";
-                    using (var cmd = new NpgsqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Id", selectedSubjektiId.Value);
-                        cmd.ExecuteNonQuery();
-                    }
-                }
+                _subjectService.DeleteSubject(selectedSubjektiId.Value);
 
                 AutoClosingMessageBox.Show("Subjekti u fshi me sukses.", "Informacion", 900);
-                NotificationService.Create("SUBJECT_DELETED", "Warning", "Subjekt i fshirë", txtBoxPershkrimi.Text, "Subjektet", selectedSubjektiId.Value, Session.UserId);
+                _notifsService.Create("SUBJECT_DELETED", "Warning", "Subjekt i fshirë", txtBoxPershkrimi.Text, "Subjektet", selectedSubjektiId.Value, Session.UserId);
+
                 LoadSubjects();
                 LoadSubjectAutoComplete();
                 ClearFields();
@@ -334,25 +288,15 @@ namespace POSProject
 
         private void LoadSubjectAutoComplete()
         {
-
             subjectList.Clear();
-            using (var connection = Db.GetConnection())
-            {
-                connection.Open();
-                string query = @"SELECT ""Pershkrimi"" 
-                                FROM ""Subjektet""
-                                ORDER BY ""Pershkrimi""";
 
-                using (var cmd = new Npgsql.NpgsqlCommand(query, connection))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        subjectList.Add(reader["Pershkrimi"].ToString());
-                    }
-                }
-                txtBoxPershkrimi.AutoCompleteCustomSource = subjectList;
+            List<string> names = _subjectService.GetSubjectNames();
+            foreach (var name in names)
+            {
+                subjectList.Add(name);
             }
+
+            txtBoxPershkrimi.AutoCompleteCustomSource = subjectList;
         }
 
         private void txtPershkrimi_KeyDown(object sender, KeyEventArgs e)

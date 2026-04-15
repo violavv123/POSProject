@@ -7,15 +7,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using POSProject.models;
+using POSProject.repositories.notifications;
+using POSProject.services.notifications;
 
 namespace POSProject
 {
     public partial class FrmNotification : Form
     {
         private DataTable notificationsTable = new DataTable();
+        private readonly INotificationService _notifService;
+        private List<NotificationModel> _notifs = new List<NotificationModel>();
         public FrmNotification()
         {
             InitializeComponent();
+            INotificationRepository notifRepo = new NotificationRepository();
+            _notifService = new NotificationService(notifRepo);
+            
             btnRefresh.Click += btnRefresh_Click;
             chckOnlyUnread.CheckedChanged += chckOnlyUnread_CheckedChanged;
             btnMarkAsRead.Click += btnMarkAsRead_Click;
@@ -96,24 +104,9 @@ namespace POSProject
 
         private void LoadNotifications()
         {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-                string query = @"SELECT ""Id"", ""Created_At"", ""Severity"", ""Type"",""Title"", ""Message"", ""IsRead""
-                                 FROM ""Notifications""
-                                 WHERE (@OnlyUnread = FALSE OR ""IsRead"" = FALSE)
-                                 ORDER BY ""IsRead"" ASC, ""Created_At"" DESC;";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@OnlyUnread", chckOnlyUnread.Checked);
-                    using (var da = new Npgsql.NpgsqlDataAdapter(cmd))
-                    {
-                        notificationsTable = new DataTable();
-                        da.Fill(notificationsTable);
-                        dataGridView1.DataSource = notificationsTable;
-                    }
-                }
-            }
+            _notifs = _notifService.GetNotifications(chckOnlyUnread.Checked, 30, 200);
+            dataGridView1.DataSource = null;
+            dataGridView1.DataSource = _notifs;
             labelCount.Text = $"Gjithsej njoftime: {dataGridView1.Rows.Count}";
         }
 
@@ -142,10 +135,11 @@ namespace POSProject
                 dataGridView1.Rows[e.RowIndex].DefaultCellStyle.Font = new Font(dataGridView1.Font, FontStyle.Regular);
             }
 
-            if(severity.Equals("Error", StringComparison.OrdinalIgnoreCase))
+            if (severity.Equals("Error", StringComparison.OrdinalIgnoreCase))
             {
                 dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.MistyRose;
-            }else if(severity.Equals("Warning", StringComparison.OrdinalIgnoreCase))
+            }
+            else if (severity.Equals("Warning", StringComparison.OrdinalIgnoreCase))
             {
                 dataGridView1.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LemonChiffon;
             }
@@ -161,7 +155,7 @@ namespace POSProject
         }
         private void btnMarkAsRead_Click(object sender, EventArgs e)
         {
-            if(dataGridView1.CurrentRow == null)
+            if (dataGridView1.CurrentRow == null)
             {
                 AutoClosingMessageBox.Show("Zgjedh një njoftim.", "Informacion", 900);
                 return;
@@ -173,18 +167,7 @@ namespace POSProject
 
         private void MarkNotificationAsRead(int id)
         {
-            using (var conn = Db.GetConnection())
-            {
-                conn.Open();
-                string query = @"UPDATE ""Notifications""
-                                 SET ""IsRead"" = TRUE
-                                 WHERE ""Id"" = @Id;";
-                using (var cmd = new Npgsql.NpgsqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@Id", id);
-                    cmd.ExecuteNonQuery();
-                }
-            }
+            _notifService.MarkAsRead(id);
         }
 
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)

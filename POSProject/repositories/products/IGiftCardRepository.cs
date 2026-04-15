@@ -17,8 +17,9 @@ namespace POSProject.repositories.products
         int InsertTransaction(GiftCardTransactionModel transaction, NpgsqlConnection conn, NpgsqlTransaction tx);
         bool ExistsByCode(string kodi);
         string GenerateUniqueCode();
-
         List<GiftCardTransactionModel> GetTransactionsByGiftCardId(int giftCardId);
+        List<GiftCardModel> GetAll(bool onlyAvailable = false);
+        void UseGiftCard(string code, decimal amount, int shitjaId, int ekzekutimiPagesesId, int userId, NpgsqlConnection conn, NpgsqlTransaction tx);
 
     }
 }

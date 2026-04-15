@@ -212,5 +212,22 @@ namespace POSProject.services.products
             CreateGiftCard(model);
             return model;
         }
+
+        public List<GiftCardModel> GetAll(bool onlyAvailable = false)
+        {
+            return _giftCardRepo.GetAll(onlyAvailable);
+        }
+
+        public void UseGiftCard(
+            string code,
+            decimal amount,
+            int shitjaId,
+            int ekzekutimiPagesesId,
+            int userId,
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx)
+        {
+            _giftCardRepo.UseGiftCard(code, amount, shitjaId, ekzekutimiPagesesId, userId, conn, tx);
+        }
     }
 }

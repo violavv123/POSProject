@@ -13,9 +13,9 @@ namespace POSProject.repositories.sales
     {
         public int InsertSale(SaleModel sale, NpgsqlConnection conn, NpgsqlTransaction tx)
         {
-            string query = @"INSERT INTO ""Shitjet""(""NrFatures"", ""DataShitjes"", ""Totali"", ""Koment"", ""perdoruesi_id"", ""SubjektiId"",
+            string query = @"INSERT INTO ""Shitjet"" (""NrFatures"", ""DataShitjes"", ""Totali"", ""Koment"", ""perdoruesi_id"", ""SubjektiId"",
                              ""ShiftId"", ""TotaliPaZbritje"", ""ZbritjaTotale"", ""TotaliFinal"")
-                             VALUES (@NrFatures, @DataShitjes, @Totali, @Koment, @PerdoruesiId, @SubjektiId, @ShiftId, @TotaliPaZbritje,
+                             VALUES(@NrFatures, @DataShitjes, @Totali, @Koment, @PerdoruesiId, @SubjektiId, @ShiftId, @TotaliPaZbritje,
                              @ZbritjaTotale, @TotaliFinal)
                              RETURNING ""Id"";";
             using var cmd = new NpgsqlCommand(query, conn, tx);
@@ -35,8 +35,8 @@ namespace POSProject.repositories.sales
 
         public void InsertSaleDetail(SaleDetailModel saleDetail, NpgsqlConnection conn, NpgsqlTransaction tx)
         {
-            string query = @"INSERT INTO ""ShitjetDetale""(""ShitjaId"",""ArtikulliId"",""Sasia"",""Cmimi"",""Vlera"",""Zbritja"",""CmimiFinal"")
-                             VALUES (@ShitjaId, @ArtikulliId, @Sasia, @Cmimi, @Vlera, @Zbritja, @CmimiFinal);";
+            string query = @"INSERT INTO ""ShitjetDetale"" (""ShitjaId"",""ArtikulliId"",""Sasia"",""Cmimi"",""Vlera"",""Zbritja"",""CmimiFinal"")
+                             VALUES(@ShitjaId, @ArtikulliId, @Sasia, @Cmimi, @Vlera, @Zbritja, @CmimiFinal);";
             using var cmd = new NpgsqlCommand(query, conn, tx);
             cmd.Parameters.AddWithValue("@ShitjaId", saleDetail.ShitjaId);
             cmd.Parameters.AddWithValue("@ArtikulliId", saleDetail.ArtikulliId);

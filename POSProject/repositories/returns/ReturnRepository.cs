@@ -160,10 +160,10 @@ namespace POSProject.repositories.returns
         public void InsertCashMovement(int shiftId, string tipi, decimal shuma, string arsyeja, string koment, int perdoruesiId, NpgsqlConnection conn, NpgsqlTransaction tx)
         {
             const string query = @"
-        INSERT INTO ""CashMovements""
-        (""ShiftId"", ""Tipi"", ""Shuma"", ""Arsyeja"", ""Koment"", ""PerdoruesiId"", ""Created_At"")
-        VALUES
-        (@ShiftId, @Tipi, @Shuma, @Arsyeja, @Koment, @PerdoruesiId, CURRENT_TIMESTAMP);";
+                                    INSERT INTO ""CashMovements""
+                                    (""ShiftId"", ""Tipi"", ""Shuma"", ""Arsyeja"", ""Koment"", ""PerdoruesiId"", ""Created_At"")
+                                    VALUES
+                                    (@ShiftId, @Tipi, @Shuma, @Arsyeja, @Koment, @PerdoruesiId, CURRENT_TIMESTAMP);";
 
             using var cmd = new NpgsqlCommand(query, conn, tx);
             cmd.Parameters.AddWithValue("@ShiftId", shiftId);

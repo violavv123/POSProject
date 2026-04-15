@@ -43,7 +43,7 @@ namespace POSProject.repositories.products
                 ShumaFillestare = Convert.ToDecimal(reader["ShumaFillestare"]),
                 BilanciAktual = Convert.ToDecimal(reader["BilanciAktual"]),
                 Statusi = reader["Status"].ToString(),
-                ShitjaIdIssued = reader["ShitjaId"] == DBNull.Value ? null : Convert.ToInt32(reader["ShitjaId"]),
+                ShitjaIdIssued = reader["ShitjaIdIssued"] == DBNull.Value ? null : Convert.ToInt32(reader["ShitjaIdIssued"]),
                 Activated_At = reader["Activated_At"] == DBNull.Value ? null : Convert.ToDateTime(reader["Activated_At"]),
                 Expires_At = reader["Expires_At"] == DBNull.Value ? null : Convert.ToDateTime(reader["Expires_At"]),
                 Created_At = Convert.ToDateTime(reader["Created_At"]),
@@ -73,7 +73,7 @@ namespace POSProject.repositories.products
         public void UpdateBalance(int giftCardId, decimal newBalance, string newStatus, NpgsqlConnection conn, NpgsqlTransaction tx)
         {
             const string query = @"UPDATE ""GiftCard""
-                                   SET ""BilanciAktual"" = @Bilanci
+                                   SET ""BilanciAktual"" = @Bilanci,
                                        ""Status"" = @Statusi
                                    WHERE ""Id"" = @Id;";
             using var cmd = new NpgsqlCommand(query, conn, tx);
@@ -95,7 +95,7 @@ namespace POSProject.repositories.products
             cmd.Parameters.AddWithValue("@Shuma", transaction.Shuma);
             cmd.Parameters.AddWithValue("@ShitjaId", (object?)transaction.ShitjaId ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@EkzekutimiPagesesId", (object?)transaction.EkzekutimiPagesesId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Koment", (object?)transaction.Created_At ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Koment", (object?)transaction.Koment ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Created_At", transaction.Created_At);
             cmd.Parameters.AddWithValue("@Created_By", (object?)transaction.Created_By ?? DBNull.Value);
             return Convert.ToInt32(cmd.ExecuteScalar());
@@ -133,7 +133,7 @@ namespace POSProject.repositories.products
                             SELECT 
                                 ""Id"",
                                 ""GiftCardId"",
-                                ""Tipi"",
+                                ""Type"",
                                 ""Shuma"",
                                 ""ShitjaId"",
                                 ""EkzekutimiPagesesId"",
@@ -154,17 +154,161 @@ namespace POSProject.repositories.products
                 {
                     Id = Convert.ToInt32(reader["Id"]),
                     GiftCardId = Convert.ToInt32(reader["GiftCardId"]),
-                    Type = reader["Tipi"].ToString(),
+                    Type = reader["Type"].ToString(),
                     Shuma = Convert.ToDecimal(reader["Shuma"]),
                     ShitjaId = reader["ShitjaId"] == DBNull.Value ? null : Convert.ToInt32(reader["ShitjaId"]),
                     EkzekutimiPagesesId = reader["EkzekutimiPagesesId"] == DBNull.Value ? null : Convert.ToInt32(reader["EkzekutimiPagesesId"]),
-                    Koment = reader["comment"] == DBNull.Value ? null : reader["comment"].ToString(),
+                    Koment = reader["Koment"] == DBNull.Value ? null : reader["Koment"].ToString(),
                     Created_At = Convert.ToDateTime(reader["Created_At"]),
                     Created_By = reader["Created_By"] == DBNull.Value ? null : Convert.ToInt32(reader["Created_By"])
                 });
             }
 
             return list;
+        }
+
+        public List<GiftCardModel> GetAll(bool onlyAvailable = false)
+        {
+            List<GiftCardModel> list = new List<GiftCardModel>();
+
+            using (var conn = Db.GetConnection())
+            {
+                conn.Open();
+
+                string query = @"
+                    SELECT 
+                        ""Id"",
+                        ""Kodi"",
+                        ""Barkodi"",
+                        ""ShumaFillestare"",
+                        ""BilanciAktual"",
+                        ""Status"",
+                        ""ShitjaIdIssued"",
+                        ""Activated_At"",
+                        ""Expires_At"",
+                        ""Created_At"",
+                        ""Created_By""
+                    FROM ""GiftCard""
+                ";
+
+                if (onlyAvailable)
+                {
+                    query += @" 
+                        WHERE UPPER(TRIM(""Status"")) = 'AKTIV'
+                          AND COALESCE(""BilanciAktual"", 0) > 0
+                          AND (""Expires_At"" IS NULL OR ""Expires_At"" >= NOW())
+                    ";
+                }
+
+                query += @" ORDER BY ""Created_At"" DESC;";
+
+                using (var cmd = new NpgsqlCommand(query, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        list.Add(new GiftCardModel
+                        {
+                            Id = Convert.ToInt32(reader["Id"]),
+                            Kodi = reader["Kodi"]?.ToString(),
+                            Barkodi = reader["Barkodi"]?.ToString(),
+                            ShumaFillestare = Convert.ToDecimal(reader["ShumaFillestare"]),
+                            BilanciAktual = Convert.ToDecimal(reader["BilanciAktual"]),
+                            Statusi = reader["Status"]?.ToString(),
+                            ShitjaIdIssued = reader["ShitjaIdIssued"] == DBNull.Value ? null : Convert.ToInt32(reader["ShitjaIdIssued"]),
+                            Activated_At = reader["Activated_At"] == DBNull.Value ? null : Convert.ToDateTime(reader["Activated_At"]),
+                            Expires_At = reader["Expires_At"] == DBNull.Value ? null : Convert.ToDateTime(reader["Expires_At"]),
+                            Created_At = reader["Created_At"] == DBNull.Value ? null : Convert.ToDateTime(reader["Created_At"]),
+                            Created_By = reader["Created_By"] == DBNull.Value ? null : Convert.ToInt32(reader["Created_By"])
+                        });
+                    }
+                }
+            }
+
+            return list;
+        }
+
+        public void UseGiftCard(string code, decimal amount, int shitjaId, int ekzekutimiPagesesId, int userId, NpgsqlConnection conn, NpgsqlTransaction tx)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+                throw new Exception("Kodi i gift card mungon.");
+
+            if (amount <= 0)
+                throw new Exception("Shuma për përdorim të gift card duhet të jetë më e madhe se zero.");
+
+            string getQuery = @"
+                SELECT ""Id"", ""BilanciAktual"", ""Status"", ""Expires_At""
+                FROM ""GiftCard""
+                WHERE ""Kodi"" = @Kodi
+                LIMIT 1;";
+
+            int giftCardId;
+            decimal bilanciAktual;
+            string statusi;
+            DateTime? expiresAt;
+
+            using (var cmd = new NpgsqlCommand(getQuery, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@Kodi", code.Trim());
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        throw new Exception("Gift card nuk u gjet.");
+
+                    giftCardId = Convert.ToInt32(reader["Id"]);
+                    bilanciAktual = Convert.ToDecimal(reader["BilanciAktual"]);
+                    statusi = reader["Status"]?.ToString() ?? "";
+                    expiresAt = reader["Expires_At"] == DBNull.Value
+                        ? null
+                        : Convert.ToDateTime(reader["Expires_At"]);
+                }
+            }
+
+            if (!statusi.Trim().Equals("Aktiv", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Gift card nuk është aktive.");
+
+            if (expiresAt.HasValue && expiresAt.Value < DateTime.Now)
+                throw new Exception("Gift card ka skaduar.");
+
+            if (bilanciAktual < amount)
+                throw new Exception($"Bilanci i gift card është i pamjaftueshëm. Bilanci aktual: {bilanciAktual:0.00}");
+
+            decimal bilanciRi = bilanciAktual - amount;
+            string statusiRi = bilanciRi <= 0 ? "Shfrytezuar" : statusi;
+
+            string updateQuery = @"
+                UPDATE ""GiftCard""
+                SET ""BilanciAktual"" = @BilanciRi,
+                    ""Status"" = @StatusiRi
+                WHERE ""Id"" = @Id;";
+
+            using (var cmd = new NpgsqlCommand(updateQuery, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@BilanciRi", bilanciRi);
+                cmd.Parameters.AddWithValue("@StatusiRi", statusiRi);
+                cmd.Parameters.AddWithValue("@Id", giftCardId);
+                cmd.ExecuteNonQuery();
+            }
+
+            string insertTransactionQuery = @"
+                INSERT INTO ""GiftCardTransaction""
+                (""GiftCardId"", ""Type"", ""Shuma"", ""ShitjaId"", ""EkzekutimiPagesesId"", ""Koment"", ""Created_At"", ""Created_By"")
+                VALUES
+                (@GiftCardId, @Tipi, @Shuma, @ShitjaId, @EkzekutimiPagesesId, @Koment, @CreatedAt, @CreatedBy);";
+
+            using (var cmd = new NpgsqlCommand(insertTransactionQuery, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@GiftCardId", giftCardId);
+                cmd.Parameters.AddWithValue("@Tipi", "PERDORIM");
+                cmd.Parameters.AddWithValue("@Shuma", amount);
+                cmd.Parameters.AddWithValue("@ShitjaId", shitjaId);
+                cmd.Parameters.AddWithValue("@EkzekutimiPagesesId", ekzekutimiPagesesId);
+                cmd.Parameters.AddWithValue("@Koment", $"Përdorur në shitje #{shitjaId}");
+                cmd.Parameters.AddWithValue("@CreatedAt", DateTime.Now);
+                cmd.Parameters.AddWithValue("@CreatedBy", userId);
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 }

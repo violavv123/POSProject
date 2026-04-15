@@ -9,12 +9,12 @@ namespace POSProject.repositories.payments
 {
     public class PaymentExecutionRepository : IPaymentExecutionRepository
     {
-        public void InsertPaymentExecution(PaymentExecutionModel payment, NpgsqlConnection conn, NpgsqlTransaction tx)
+        public int InsertPaymentExecution(PaymentExecutionModel payment, NpgsqlConnection conn, NpgsqlTransaction tx)
         {
-            string query = @"INSERT INTO ""EkzekutimiPageses""(""ShitjaId"", ""MenyraPagesesId"", ""ShumaPaguar"", ""PaguarMe"", ""CashBack"", ""Valuta"",
-                             ""KursiKembimit"", ""ShumaNeValuteBaze"", ""ReferenceNr"", ""Statusi"", ""Koment"", ""PerdoruesiId"", ""Created_At"", ""ShiftId""
-                             VALUES (@ShitjaId, @MenyraPagesesId, @ShumaPaguar, @PaguarMe, @CashBack, @Valuta, @KursiKembimit, @ShumaNeValuteBaze, @ReferenceNr,
-                             @Statusi, @Koment, @PerdoruesiId, @Created_At, @ShiftId);";
+            string query = @"INSERT INTO ""EkzekutimiPageses"" (""ShitjaId"", ""MenyraPagesesId"", ""ShumaPaguar"", ""PaguarMe"", ""CashBack"", ""Valuta"",
+                             ""KursiKembimit"", ""ShumaNeValuteBaze"", ""ReferenceNr"", ""Statusi"", ""Koment"", ""PerdoruesiId"", ""Created_At"", ""ShiftId"")
+                             VALUES(@ShitjaId, @MenyraPagesesId, @ShumaPaguar, @PaguarMe, @CashBack, @Valuta, @KursiKembimit, @ShumaNeValuteBaze, @ReferenceNr,
+                             @Statusi, @Koment, @PerdoruesiId, @Created_At, @ShiftId) RETURNING ""Id"";";
             using var cmd = new NpgsqlCommand(query, conn, tx);
             cmd.Parameters.AddWithValue("@ShitjaId", payment.ShitjaId);
             cmd.Parameters.AddWithValue("@MenyraPagesesId", payment.MenyraPagesesId);
@@ -30,7 +30,7 @@ namespace POSProject.repositories.payments
             cmd.Parameters.AddWithValue("@PerdoruesiId", payment.PerdoruesiId);
             cmd.Parameters.AddWithValue("@Created_At", payment.CreatedAt);
             cmd.Parameters.AddWithValue("@ShiftId", payment.ShiftId);
-            cmd.ExecuteNonQuery();
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
     }
 }

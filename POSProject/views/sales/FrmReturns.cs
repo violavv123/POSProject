@@ -9,8 +9,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using POSProject.repositories.notifications;
 using POSProject.repositories.returns;
 using POSProject.services;
+using POSProject.services.notifications;
 using POSProject.services.returns;
 
 namespace POSProject
@@ -22,6 +24,8 @@ namespace POSProject
         private DataTable _saleLinesTable;
         private int _currentSaleId = 0;
         private AutoCompleteStringCollection invoiceList = new AutoCompleteStringCollection();
+        private readonly INotificationService _notifsService;
+
         public FrmReturns() : this(
             new ReturnService(new ReturnRepository()))
         {
@@ -31,6 +35,8 @@ namespace POSProject
         public FrmReturns(IReturnService returnService)
         {
             InitializeComponent();
+            INotificationRepository notifsRepo = new NotificationRepository();
+            _notifsService = new NotificationService(notifsRepo);
             _returnService = returnService;
             InitializeForm();
         }
@@ -123,13 +129,13 @@ namespace POSProject
 
                 int returnId = _returnService.SaveReturn(model);
                 AutoClosingMessageBox.Show($"Kthimi u ruajt me sukses. ID = {returnId}", "Info", 900);
-                NotificationService.Create("RETURN_SUCCESS", "Info", "Kthimi u ruajt me sukses", $"Kthimi me id:{returnId} u ruajt me sukses", nameof(model), returnId, Session.UserId);
+                _notifsService.Create("RETURN_SUCCESS", "Info", "Kthimi u ruajt me sukses", $"Kthimi me id:{returnId} u ruajt me sukses", nameof(model), returnId, Session.UserId);
                 ResetFormState();
 
             }catch(Exception ex)
             {
                 MessageBox.Show("Gabim gjatë ruajtjes së kthimit:" + ex.Message);
-                NotificationService.Create("RETURN_FAIL", "Warning", "Dështoi ruajtja e kthimit", $"Kthimi nuk u ruajt", null, Session.UserId);
+                _notifsService.Create("RETURN_FAIL", "Warning", "Dështoi ruajtja e kthimit", $"Kthimi nuk u ruajt", null, Session.UserId);
             }
         }
 
